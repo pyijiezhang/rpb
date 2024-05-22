@@ -1,0 +1,5 @@
+fmnist-data/
+mnist-data/
+*pyc
+*pt
+.DS_Store
