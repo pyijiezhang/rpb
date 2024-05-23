@@ -30,7 +30,7 @@ def main(
     seed=0,
 ):
 
-    exp_settings = f"{name_data}_{model}_{objective}_{split}_{T}_{seed}.pt"
+    exp_settings = f"{name_data}_{model}_{objective}_{split}_{T}_{gamma_t}_{seed}.pt"
     if not os.path.exists("./saved_models/rpb"):
         os.makedirs("./saved_models/rpb")
 
@@ -76,7 +76,7 @@ def main(
         if t == 0:
             prior = init_posterior(model, sigma_prior, prior=None, device=device)
             n_posterior = n_train
-            use_excess_loss = False
+            use_excess_loss = True
 
             dir_prior = f"./saved_models/rpb/posterior_0_" + exp_settings
             torch.save(prior, dir_prior)

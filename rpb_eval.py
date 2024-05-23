@@ -52,7 +52,7 @@ def main(
 
     posteriors = []
     T = len(T_splits)
-    exp_settings = f"{name_data}_{model}_{objective}_{T}_{seed}.pt"
+    exp_settings = f"{name_data}_{model}_{objective}_{split}_{T}_{gamma_t}_{seed}.pt"
     for t in range(T):
         dir_posterior = f"./saved_models/rpb/posterior_{t+1}_" + exp_settings
         posterior = torch.load(dir_posterior, map_location=torch.device(device))
