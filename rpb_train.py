@@ -13,7 +13,8 @@ def main(
     name_data="mnist",
     model="fcn",
     objective="fclassic",
-    T_splits=[1875, 1875, 3750, 7500, 15000, 30000],
+    T=6,
+    split="geometric",
     gamma_t=0.5,
     sigma_prior=0.03,
     pmin=1e-5,
@@ -29,8 +30,7 @@ def main(
     seed=0,
 ):
 
-    T = len(T_splits)
-    exp_settings = f"{name_data}_{model}_{objective}_{T}_{seed}.pt"
+    exp_settings = f"{name_data}_{model}_{objective}_{split}_{T}_{seed}.pt"
     if not os.path.exists("./saved_models/rpb"):
         os.makedirs("./saved_models/rpb")
 
@@ -48,6 +48,19 @@ def main(
     train, _ = data.loaddataset(name_data)
     classes = len(train.classes)
     n_train = len(train.data)
+
+    if split == "uniform":
+        T_splits = [int(n_train / T)] * T
+    elif split == "geometric":
+        if T == 2:
+            T_splits = [20000, 40000]
+        elif T == 4:
+            T_splits = [7500, 7500, 15000, 30000]
+        elif T == 6:
+            T_splits = [1875, 1875, 3750, 7500, 15000, 30000]
+        elif T == 8:
+            T_splits = [468, 469, 938, 1875, 3750, 7500, 15000, 30000]
+
     train_loaders = data.loadbatches_train(
         train, loader_kargs, batch_size, T_splits, seed
     )
@@ -63,9 +76,14 @@ def main(
         if t == 0:
             prior = init_posterior(model, sigma_prior, prior=None, device=device)
             n_posterior = n_train
+            use_excess_loss = False
+
+            dir_prior = f"./saved_models/rpb/posterior_0_" + exp_settings
+            torch.save(prior, dir_prior)
         else:
             prior = torch.load(dir_posterior, map_location=torch.device(device))
             n_posterior = n_train - n_train_t_cumsum[t - 1]
+            use_excess_loss = True
 
         posterior = init_posterior(
             model,
@@ -83,7 +101,7 @@ def main(
             kl_penalty,
             device,
             n_posterior,
-            use_excess_loss=True,
+            use_excess_loss=use_excess_loss,
         )
 
         if objective == "flamb":

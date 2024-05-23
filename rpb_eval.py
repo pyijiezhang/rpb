@@ -12,7 +12,8 @@ def main(
     name_data="mnist",
     model="fcn",
     objective="fclassic",
-    T_splits=[1875, 1875, 3750, 7500, 15000, 30000],
+    T=6,
+    split="geometric",
     seed=0,
     batch_size=128,
 ):
@@ -32,6 +33,18 @@ def main(
     train, test = data.loaddataset(name_data)
     n_train = len(train)
     n_test = len(test)
+
+    if split == "uniform":
+        T_splits = [int(n_train / T)] * T
+    elif split == "geometric":
+        if T == 2:
+            T_splits = [20000, 40000]
+        elif T == 4:
+            T_splits = [7500, 7500, 15000, 30000]
+        elif T == 6:
+            T_splits = [1875, 1875, 3750, 7500, 15000, 30000]
+        elif T == 8:
+            T_splits = [468, 469, 938, 1875, 3750, 7500, 15000, 30000]
 
     eval_loaders = data.loadbatches_eval(
         train, loader_kargs, batch_size, T_splits, seed
