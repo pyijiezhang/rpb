@@ -76,7 +76,7 @@ def main(
         if t == 0:
             prior = init_posterior(model, sigma_prior, prior=None, device=device)
             n_posterior = n_train
-            use_excess_loss = True
+            use_excess_loss = False
 
             dir_prior = f"./saved_models/rpb/posterior_0_" + exp_settings
             torch.save(prior, dir_prior)
