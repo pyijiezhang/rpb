@@ -67,8 +67,8 @@ class PBBobj:
     def compute_empirical_risk(self, outputs, targets, bounded=True):
         # compute negative log likelihood loss and bound it with pmin (if applicable)
         # empirical_risk = F.nll_loss(outputs, targets)
-        c1 = 3
-        empirical_risk = F.cross_entropy(outputs * c1, targets)
+        c2 = 3
+        empirical_risk = F.cross_entropy(outputs * c2, targets)
 
         if bounded == True:
             empirical_risk = (1.0 / (np.log(1.0 / self.pmin))) * empirical_risk
