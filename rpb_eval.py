@@ -14,6 +14,7 @@ def main(
     objective="fclassic",
     T=6,
     split="geometric",
+    gamma_t=0.5,
     seed=0,
     batch_size=128,
 ):
