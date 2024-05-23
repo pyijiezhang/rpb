@@ -107,7 +107,7 @@ class PBBobj:
                 outputs_prior * c1, target, reduce=False
             )
             loss_ce_excess_posterior = F.cross_entropy(
-                outputs * c1, target, reduce=False
+                outputs * c2, target, reduce=False
             )
             loss_ce_excess = loss_ce_excess_posterior - loss_ce_excess_prior * gamma_t
 
@@ -118,7 +118,7 @@ class PBBobj:
                 rv = np.array([-gamma_t, 0, 1 - gamma_t, 1])
             js = rv[1:]
             for j in js:
-                loss_excess.append(F.sigmoid(c2 * (loss_ce_excess - j)).mean())
+                loss_excess.append(F.sigmoid(c1 * (loss_ce_excess - j)).mean())
         else:
             loss_excess = None
         return loss_ce, loss_01, outputs, loss_excess
