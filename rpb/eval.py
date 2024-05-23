@@ -137,6 +137,34 @@ def compute_risk_rpb(
     return loss_ts, kl_ts, E_ts, B_ts
 
 
+def compute_risk_rpb_onestep(
+    posterior, prior, eval_loader, gamma_t, T, delta_test=0.01, delta=0.025
+):
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    prior.eval()
+    posterior.eval()
+
+    kl = posterior.compute_kl().detach().numpy()
+    n_bound = len(eval_loader.sampler.indices)
+
+    rv = np.array([-gamma_t, 0, 1 - gamma_t, 1])
+    js_minus = rv[1:] - rv[0:-1]
+
+    loss_excess = 0
+    for _, (input, target) in enumerate(tqdm(eval_loader)):
+        input, target = input.to(device), target.to(device)
+        loss_excess += (
+            mcsampling_excess(posterior, prior, input, target, gamma_t=gamma_t)
+            * input.shape[0]
+        )
+    loss_excess /= n_bound
+    loss_excess_sum = (loss_excess * js_minus).sum(0) + rv[0]
+    E_t = compute_E_t(loss_excess, kl, T, gamma_t, n_bound, delta_test, delta)
+    return loss_excess, loss_excess_sum, E_t, kl
+
+
 def compute_B_t(B_1, E_ts, gamma_t):
     """Compute risk of T-step posteriors using the recursive formula:
     B_t = E_t + gam * B_{t-1}
