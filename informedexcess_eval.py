@@ -51,9 +51,11 @@ def main(
 
     dir_posterior = f"./saved_models/informedexcess/posterior_2_" + exp_settings
     posterior = torch.load(dir_posterior, map_location=torch.device(device))
+    posterior.device = device
 
     dir_h = f"./saved_models/informedexcess/posterior_h_" + exp_settings
     h = torch.load(dir_h, map_location=torch.device(device))
+    h.device = device
 
     # eval loss
     eval_loss = 0

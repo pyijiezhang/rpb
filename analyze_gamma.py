@@ -19,6 +19,7 @@ def main(
     T=6,
     split="geometric",
     gamma_t=0.5,
+    recursive_step_0=False,
     gamma_ts=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
     sigma_prior=0.03,
     pmin=1e-5,
@@ -34,7 +35,7 @@ def main(
     seed=0,
 ):
 
-    exp_settings = f"{name_data}_{model}_{objective}_{split}_{T}_{gamma_t}_{seed}.pt"
+    exp_settings = f"{name_data}_{model}_{objective}_{split}_{T}_{recursive_step_0}_{gamma_t}_{seed}.pt"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -86,6 +87,7 @@ def main(
 
         dir_prior = f"./saved_models/rpb/posterior_{t}_" + exp_settings
         prior = torch.load(dir_prior, map_location=torch.device(device))
+        prior.device = device
 
         n_posterior = len(train.data) - n_train_t_cumsum[t - 1]
 

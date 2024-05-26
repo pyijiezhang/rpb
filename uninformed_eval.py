@@ -44,6 +44,7 @@ def main(
     exp_settings = f"{name_data}_{model}_{objective}_{seed}.pt"
     dir_posterior = f"./saved_models/uninformed/posterior_" + exp_settings
     posterior = torch.load(dir_posterior, map_location=torch.device(device))
+    posterior.device = device
 
     # train loss
     train_loss = 0
