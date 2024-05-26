@@ -17,7 +17,7 @@ def main(
     gamma_t=0.5,
     recursive_step_0=False,
     seed=0,
-    batch_size=128,
+    batch_size=250,
 ):
 
     torch.manual_seed(seed)

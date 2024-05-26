@@ -15,7 +15,7 @@ def main(
     seed=0,
     delta_test=0.01,
     delta=0.025,
-    batch_size=128,
+    batch_size=250,
 ):
 
     torch.manual_seed(seed)
