@@ -34,7 +34,7 @@ def main(
 
     exp_settings = f"{name_data}_{model}_{layers}_{objective}_{split}_{T}_{recursive_step_1}_{gamma_t}_{seed}.pt"
     if not os.path.exists(f"./saved_models/rpb"):
-        os.makedirs(f"./saved_models/rpb")
+        os.makedirs(f"./saved_models/rpb", exist_ok=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
