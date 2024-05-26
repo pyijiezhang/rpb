@@ -3,3 +3,5 @@ mnist-data/
 *pyc
 *pt
 .DS_Store
+*out
+*sh
