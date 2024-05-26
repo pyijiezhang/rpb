@@ -32,8 +32,8 @@ def main(
 ):
 
     exp_settings = f"{name_data}_{model}_{objective}_{split}_{T}_{recursive_step_0}_{gamma_t}_{seed}.pt"
-    if not os.path.exists("./saved_models/rpb"):
-        os.makedirs("./saved_models/rpb")
+    if not os.path.exists(f"./saved_models/rpb/T={T}"):
+        os.makedirs(f"./saved_models/rpb/T={T}")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -70,11 +70,11 @@ def main(
         [len(train_loader.sampler.indices) for train_loader in train_loaders]
     )
 
-    for t in range(T):
+    for t in range(1, T + 1):
 
-        train_loader = train_loaders[t]
+        train_loader = train_loaders[t - 1]
 
-        if t == 0:
+        if t == 1:
             prior = init_posterior(model, sigma_prior, prior=None, device=device)
             n_posterior = n_train
 
@@ -83,11 +83,11 @@ def main(
             else:
                 use_excess_loss = False
 
-            dir_prior = f"./saved_models/rpb/posterior_0_" + exp_settings
+            dir_prior = f"./saved_models/rpb/T={T}/posterior_0_" + exp_settings
             torch.save(prior, dir_prior)
         else:
             prior = torch.load(dir_posterior, map_location=torch.device(device))
-            n_posterior = n_train - n_train_t_cumsum[t - 1]
+            n_posterior = n_train - n_train_t_cumsum[t - 2]
             use_excess_loss = True
 
         posterior = init_posterior(
@@ -136,7 +136,7 @@ def main(
                 gamma_t,
             )
 
-        dir_posterior = f"./saved_models/rpb/posterior_{t+1}_" + exp_settings
+        dir_posterior = f"./saved_models/rpb/T={T}/posterior_{t}_" + exp_settings
         torch.save(posterior, dir_posterior)
 
 
