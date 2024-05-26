@@ -50,7 +50,7 @@ def mcsampling_01(pi, input, target, sample=True):
     for i in trange(mc_samples):
         loss_01_i = get_loss_01(pi, input[i : i + 1], target[i : i + 1], sample=sample)
         loss_01 += loss_01_i
-    return loss_01.numpy()[0] / mc_samples
+    return loss_01.cpu().numpy()[0] / mc_samples
 
 
 def mcsampling_excess(posterior, prior, input, target, sample_prior=True, gamma_t=0.5):
@@ -83,7 +83,7 @@ def mcsampling_excess(posterior, prior, input, target, sample_prior=True, gamma_
         )
         delta_js_mc = get_excess_j(loss_01_posterior, loss_01_prior, js, gamma_t)
         delta_js += delta_js_mc
-    return delta_js.numpy() / mc_samples
+    return delta_js.cpu().numpy() / mc_samples
 
 
 def compute_risk_rpb(
@@ -107,7 +107,7 @@ def compute_risk_rpb(
     for t in range(T):
         posterior = posteriors[t]
         posterior.eval()
-        kl = posterior.compute_kl().detach().numpy()
+        kl = posterior.compute_kl().detach().cpu().numpy()
         eval_loader = eval_loaders[t]
         n_bound = len(eval_loader.sampler.indices)
         if t == 0:
@@ -146,7 +146,7 @@ def compute_risk_rpb_onestep(
     prior.eval()
     posterior.eval()
 
-    kl = posterior.compute_kl().detach().numpy()
+    kl = posterior.compute_kl().detach().cpu().numpy()
     n_bound = len(eval_loader.sampler.indices)
 
     rv = np.array([-gamma_t, 0, 1 - gamma_t, 1])
@@ -222,7 +222,7 @@ def compute_risk_informedexcess(
 
     h_pnet.eval()
     posterior.eval()
-    kl = posterior.compute_kl().detach().numpy()
+    kl = posterior.compute_kl().detach().cpu().numpy()
 
     loss_excess = 0
     loss_01 = 0
