@@ -32,8 +32,8 @@ def main(
 ):
 
     exp_settings = f"{name_data}_{model}_{objective}_{split}_{T}_{recursive_step_0}_{gamma_t}_{seed}.pt"
-    if not os.path.exists(f"./saved_models/rpb/T={T}"):
-        os.makedirs(f"./saved_models/rpb/T={T}")
+    if not os.path.exists(f"./saved_models/rpb"):
+        os.makedirs(f"./saved_models/rpb")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -83,12 +83,15 @@ def main(
             else:
                 use_excess_loss = False
 
-            dir_prior = f"./saved_models/rpb/T={T}/posterior_0_" + exp_settings
+            dir_prior = f"./saved_models/rpb/posterior_0_" + exp_settings
             torch.save(prior, dir_prior)
         else:
             prior = torch.load(dir_posterior, map_location=torch.device(device))
             n_posterior = n_train - n_train_t_cumsum[t - 2]
             use_excess_loss = True
+
+        print("Current step:", t)
+        print("n_posterior:", n_posterior)
 
         posterior = init_posterior(
             model,
@@ -136,7 +139,7 @@ def main(
                 gamma_t,
             )
 
-        dir_posterior = f"./saved_models/rpb/T={T}/posterior_{t}_" + exp_settings
+        dir_posterior = f"./saved_models/rpb/posterior_{t}_" + exp_settings
         torch.save(posterior, dir_posterior)
 
 
