@@ -16,7 +16,7 @@ def main(
     T=6,
     split="geometric",
     gamma_t=0.5,
-    recursive_step_0=False,
+    recursive_step_1=False,
     sigma_prior=0.03,
     pmin=1e-5,
     delta=0.025,
@@ -31,7 +31,7 @@ def main(
     seed=0,
 ):
 
-    exp_settings = f"{name_data}_{model}_{objective}_{split}_{T}_{recursive_step_0}_{gamma_t}_{seed}.pt"
+    exp_settings = f"{name_data}_{model}_{objective}_{split}_{T}_{recursive_step_1}_{gamma_t}_{seed}.pt"
     if not os.path.exists(f"./saved_models/rpb"):
         os.makedirs(f"./saved_models/rpb")
 
@@ -78,7 +78,7 @@ def main(
             prior = init_posterior(model, sigma_prior, prior=None, device=device)
             n_posterior = n_train
 
-            if recursive_step_0:
+            if recursive_step_1:
                 use_excess_loss = True
             else:
                 use_excess_loss = False
