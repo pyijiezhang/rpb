@@ -104,13 +104,13 @@ def compute_risk_rpb(
     kl_ts = []
     E_ts = []
     B_ts = []
-    for t in range(T):
-        posterior = posteriors[t]
+    for t in range(1, T + 1):
+        posterior = posteriors[t - 1]
         posterior.eval()
         kl = posterior.compute_kl().detach().cpu().numpy()
-        eval_loader = eval_loaders[t]
+        eval_loader = eval_loaders[t - 1]
         n_bound = len(eval_loader.sampler.indices)
-        if t == 0:
+        if t == 1:
             loss_01 = 0
             for _, (input, target) in enumerate(tqdm(eval_loader)):
                 input, target = input.to(device), target.to(device)
@@ -119,7 +119,7 @@ def compute_risk_rpb(
             B_1 = compute_B_1(loss_01, kl, T, n_bound, delta_test, delta)
             loss_ts.append(loss_01)
         else:
-            prior = posteriors[t - 1]
+            prior = posteriors[t - 2]
             prior.eval()
             loss_excess = 0
             for _, (input, target) in enumerate(tqdm(eval_loader)):
@@ -188,6 +188,36 @@ def compute_B_1(loss_01, kl, T, n_bound, delta_test=0.01, delta=0.025):
         inv_1,
         (kl + np.log((2 * T * np.sqrt(n_bound)) / delta)) / n_bound,
     )
+    return B_1
+
+
+def compute_B_1_recursive_step_0(
+    loss_01, loss_excess, kl, T, n_bound, gamma_t, delta_test=0.01, delta=0.025
+):
+
+    inv_1 = solve_kl_sup(loss_01, np.log(T / delta_test) / n_bound)
+    B_0 = solve_kl_sup(inv_1, np.log(T / delta) / n_bound)
+
+    if gamma_t == 1:
+        rv = np.array([-1, 0, 1])
+    else:
+        rv = np.array([-gamma_t, 0, 1 - gamma_t, 1])
+    js_minus = rv[1:] - rv[0:-1]
+
+    E_1 = rv[0]
+    for i in range(len(loss_excess)):
+        inv_1 = solve_kl_sup(
+            loss_excess[i],
+            np.log(len(js_minus) * T / delta_test) / n_bound,
+        )
+        inv_2 = solve_kl_sup(
+            inv_1,
+            (kl + np.log((len(js_minus) * T * 2 * np.sqrt(n_bound)) / delta)) / n_bound,
+        )
+        E_1 += inv_2 * js_minus[i]
+
+    B_1 = E_1 + gamma_t * B_0
+
     return B_1
 
 

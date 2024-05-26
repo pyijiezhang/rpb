@@ -67,29 +67,26 @@ def main(
     train_loaders = data.loadbatches_train(
         train, loader_kargs, batch_size, T_splits, seed
     )
-    n_train_t_cumsum = np.cumsum(
-        [len(train_loader.sampler.indices) for train_loader in train_loaders]
-    )
 
     eval_loaders = data.loadbatches_eval(
         train, loader_kargs, batch_size, T_splits, seed
     )
 
     results_gamma = {}
-    for t in range(1, T):
+    for t in range(2, T + 1):
 
         print("Current step: ", t)
 
         results_gamma[t] = {}
 
-        train_loader = train_loaders[t]
-        eval_loader = eval_loaders[t]
+        train_loader = train_loaders[t - 1]
+        eval_loader = eval_loaders[t - 1]
 
-        dir_prior = f"./saved_models/rpb/posterior_{t}_" + exp_settings
+        dir_prior = f"./saved_models/rpb/T={T}/posterior_{t-1}_" + exp_settings
         prior = torch.load(dir_prior, map_location=torch.device(device))
         prior.device = device
 
-        n_posterior = len(train.data) - n_train_t_cumsum[t - 1]
+        n_posterior = len(eval_loader.sampler.indices)
 
         for gamma_t in gamma_ts:
 
@@ -142,7 +139,7 @@ def main(
                 )
 
             dir_posterior = (
-                f"./saved_models/rpb/posterior_{t+1}_{gamma_t}_" + exp_settings
+                f"./saved_models/rpb/T={T}/posterior_{t}_{gamma_t}_" + exp_settings
             )
             torch.save(posterior, dir_posterior)
 
@@ -158,9 +155,9 @@ def main(
             print("Current results: ", results)
             results_gamma[t][gamma_t] = results
 
-        if not os.path.exists("./results/rpb"):
-            os.makedirs("./results/rpb")
-        results_dir = f"./results/rpb/results_gamma_" + exp_settings
+        if not os.path.exists("./results/rpb/T={T}"):
+            os.makedirs("./results/rpb/T={T}")
+        results_dir = f"./results/rpb/T={T}/results_gamma_" + exp_settings
 
         with open(results_dir, "wb") as handle:
             pickle.dump(results_gamma, handle, protocol=pickle.HIGHEST_PROTOCOL)
