@@ -12,6 +12,7 @@ from rpb.utils import init_posterior
 def main(
     name_data="mnist",
     model="fcn",
+    layers=4,
     objective="fclassic",
     T=6,
     split="geometric",
@@ -31,7 +32,7 @@ def main(
     seed=0,
 ):
 
-    exp_settings = f"{name_data}_{model}_{objective}_{split}_{T}_{recursive_step_1}_{gamma_t}_{seed}.pt"
+    exp_settings = f"{name_data}_{model}_{layers}_{objective}_{split}_{T}_{recursive_step_1}_{gamma_t}_{seed}.pt"
     if not os.path.exists(f"./saved_models/rpb"):
         os.makedirs(f"./saved_models/rpb")
 
