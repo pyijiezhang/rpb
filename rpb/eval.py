@@ -222,7 +222,7 @@ def compute_risk_rpb_onestep(
 
     kl = posterior.compute_kl().detach().cpu().numpy()
     n_bound = len(eval_loader.sampler.indices)
-    
+
     print("n_bound:", n_bound)
 
     rv = np.array([-gamma_t, 0, 1 - gamma_t, 1])

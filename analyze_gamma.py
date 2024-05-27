@@ -15,11 +15,12 @@ from rpb.eval import compute_risk_rpb_onestep
 def main(
     name_data="mnist",
     model="fcn",
+    layers=4,
     objective="fclassic",
     T=6,
     split="geometric",
     gamma_t=0.5,
-    recursive_step_0=False,
+    recursive_step_1=False,
     gamma_ts=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
     sigma_prior=0.03,
     pmin=1e-5,
@@ -35,7 +36,7 @@ def main(
     seed=0,
 ):
 
-    exp_settings = f"{name_data}_{model}_{objective}_{split}_{T}_{recursive_step_0}_{gamma_t}_{seed}.pt"
+    exp_settings = f"{name_data}_{model}_{layers}_{objective}_{split}_{T}_{recursive_step_1}_{gamma_t}_{seed}.pt"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -72,17 +73,22 @@ def main(
         train, loader_kargs, batch_size, T_splits, seed
     )
 
-    results_gamma = {}
-    for t in range(2, T + 1):
+    if recursive_step_1:
+        start_step = 1
+    else:
+        start_step = 2
 
-        print("Current step: ", t)
+    results_gamma = {}
+    for t in range(start_step, T + 1):
+
+        print("Current step:", t)
 
         results_gamma[t] = {}
 
         train_loader = train_loaders[t - 1]
         eval_loader = eval_loaders[t - 1]
 
-        dir_prior = f"./saved_models/rpb/T={T}/posterior_{t-1}_" + exp_settings
+        dir_prior = f"./saved_models/rpb/posterior_{t-1}_" + exp_settings
         prior = torch.load(dir_prior, map_location=torch.device(device))
         prior.device = device
 
@@ -90,7 +96,7 @@ def main(
 
         for gamma_t in gamma_ts:
 
-            print("Current gamma_t: ", gamma_t)
+            print("Current gamma_t:", gamma_t)
 
             posterior = init_posterior(
                 model,
@@ -139,7 +145,7 @@ def main(
                 )
 
             dir_posterior = (
-                f"./saved_models/rpb/T={T}/posterior_{t}_{gamma_t}_" + exp_settings
+                f"./saved_models/rpb/posterior_{t}_{gamma_t}_" + exp_settings
             )
             torch.save(posterior, dir_posterior)
 
@@ -155,9 +161,9 @@ def main(
             print("Current results: ", results)
             results_gamma[t][gamma_t] = results
 
-        if not os.path.exists("./results/rpb/T={T}"):
-            os.makedirs("./results/rpb/T={T}")
-        results_dir = f"./results/rpb/T={T}/results_gamma_" + exp_settings
+        if not os.path.exists("./results/rpb"):
+            os.makedirs("./results/rpb", exist_ok=True)
+        results_dir = f"./results/rpb/results_gamma_" + exp_settings
 
         with open(results_dir, "wb") as handle:
             pickle.dump(results_gamma, handle, protocol=pickle.HIGHEST_PROTOCOL)
