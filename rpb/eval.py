@@ -105,11 +105,18 @@ def compute_risk_rpb(
     E_ts = []
     B_ts = []
     for t in range(1, T + 1):
+
         posterior = posteriors[t - 1]
         posterior.eval()
+
         kl = posterior.compute_kl().detach().cpu().numpy()
+
         eval_loader = eval_loaders[t - 1]
         n_bound = len(eval_loader.sampler.indices)
+
+        print("Current step:", t)
+        print("n_bound:", n_bound)
+
         if t == 1:
             loss_01 = 0
             for _, (input, target) in enumerate(tqdm(eval_loader)):
@@ -119,8 +126,75 @@ def compute_risk_rpb(
             B_1 = compute_B_1(loss_01, kl, T, n_bound, delta_test, delta)
             loss_ts.append(loss_01)
         else:
+
             prior = posteriors[t - 2]
             prior.eval()
+
+            loss_excess = 0
+            for _, (input, target) in enumerate(tqdm(eval_loader)):
+                input, target = input.to(device), target.to(device)
+                loss_excess += (
+                    mcsampling_excess(posterior, prior, input, target, gamma_t=gamma_t)
+                    * input.shape[0]
+                )
+            loss_excess /= n_bound
+            E_t = compute_E_t(loss_excess, kl, T, gamma_t, n_bound, delta_test, delta)
+            E_ts.append(E_t)
+            loss_ts.append(loss_excess)
+        kl_ts.append(kl)
+    B_ts = compute_B_t(B_1, E_ts, gamma_t)
+    return loss_ts, kl_ts, E_ts, B_ts
+
+
+def compute_risk_rpb_recursive_step_1(
+    posteriors, eval_loaders, gamma_t=0.5, delta_test=0.01, delta=0.025
+):
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    T = len(posteriors) - 1
+    loss_ts = []
+    kl_ts = []
+    E_ts = []
+    B_ts = []
+    for t in range(1, T + 1):
+
+        prior = posteriors[t - 1]
+        prior.eval()
+
+        posterior = posteriors[t]
+        posterior.eval()
+
+        kl = posterior.compute_kl().detach().cpu().numpy()
+
+        eval_loader = eval_loaders[t - 1]
+        n_bound = len(eval_loader.sampler.indices)
+
+        print("Current step:", t)
+        print("n_bound:", n_bound)
+
+        if t == 1:
+
+            loss_01 = 0
+            for _, (input, target) in enumerate(tqdm(eval_loader)):
+                input, target = input.to(device), target.to(device)
+                loss_01 += mcsampling_01(prior, input, target) * input.shape[0]
+            loss_01 /= n_bound  # check
+
+            loss_excess = 0
+            for _, (input, target) in enumerate(tqdm(eval_loader)):
+                input, target = input.to(device), target.to(device)
+                loss_excess += (
+                    mcsampling_excess(posterior, prior, input, target, gamma_t=gamma_t)
+                    * input.shape[0]
+                )
+            loss_excess /= n_bound
+
+            B_1 = compute_B_1_recursive_step_1(
+                loss_01, loss_excess, kl, T, n_bound, gamma_t, delta_test, delta
+            )
+            loss_ts.append([loss_01, loss_excess])
+        else:
             loss_excess = 0
             for _, (input, target) in enumerate(tqdm(eval_loader)):
                 input, target = input.to(device), target.to(device)
@@ -148,6 +222,8 @@ def compute_risk_rpb_onestep(
 
     kl = posterior.compute_kl().detach().cpu().numpy()
     n_bound = len(eval_loader.sampler.indices)
+    
+    print("n_bound:", n_bound)
 
     rv = np.array([-gamma_t, 0, 1 - gamma_t, 1])
     js_minus = rv[1:] - rv[0:-1]
@@ -191,7 +267,7 @@ def compute_B_1(loss_01, kl, T, n_bound, delta_test=0.01, delta=0.025):
     return B_1
 
 
-def compute_B_1_recursive_step_0(
+def compute_B_1_recursive_step_1(
     loss_01, loss_excess, kl, T, n_bound, gamma_t, delta_test=0.01, delta=0.025
 ):
 
