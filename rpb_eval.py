@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 
 from rpb import data
-from rpb.eval import compute_risk_rpb, get_loss_01
+from rpb.eval import compute_risk_rpb, compute_risk_rpb_recursive_step_1, get_loss_01
 
 
 def main(
@@ -56,20 +56,31 @@ def main(
     posteriors = []
     T = len(T_splits)
     exp_settings = f"{name_data}_{model}_{layers}_{objective}_{split}_{T}_{recursive_step_1}_{gamma_t}_{seed}.pt"
-    for t in range(1, T + 1):
+
+    if recursive_step_1:
+        start_step = 0
+    else:
+        start_step = 1
+
+    for t in range(start_step, T + 1):
         dir_posterior = f"./saved_models/rpb/posterior_{t}_" + exp_settings
         posterior = torch.load(dir_posterior, map_location=torch.device(device))
         posterior.device = device
         posteriors.append(posterior)
 
     # compute risk
-    loss_ts, kl_ts, E_ts, B_ts = compute_risk_rpb(posteriors, eval_loaders)
+    if recursive_step_1:
+        loss_ts, kl_ts, E_ts, B_ts = compute_risk_rpb_recursive_step_1(
+            posteriors, eval_loaders
+        )
+    else:
+        loss_ts, kl_ts, E_ts, B_ts = compute_risk_rpb(posteriors, eval_loaders)
 
     # compute train and test loss
     test_loader = data.loadbatches_eval(test, loader_kargs, n_test, [n_test], seed)
     test_loss_ts = []
     for t in range(1, T + 1):
-        posterior = posteriors[t - 1]
+        posterior = posteriors[t - start_step]
         for _, (input_batch, target_batch) in enumerate(tqdm(test_loader[0])):
             test_loss = get_loss_01(posterior, input_batch, target_batch, sample=True)
             test_loss_ts.append(test_loss.sum().numpy() / n_test)
