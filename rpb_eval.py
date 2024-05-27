@@ -65,7 +65,6 @@ def main(
     for t in range(start_step, T + 1):
         dir_posterior = f"./saved_models/rpb/posterior_{t}_" + exp_settings
         posterior = torch.load(dir_posterior, map_location=torch.device(device))
-        posterior.device = device
         posteriors.append(posterior)
 
     # compute risk

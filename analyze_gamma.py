@@ -90,7 +90,6 @@ def main(
 
         dir_prior = f"./saved_models/rpb/posterior_{t-1}_" + exp_settings
         prior = torch.load(dir_prior, map_location=torch.device(device))
-        prior.device = device
 
         n_posterior = len(eval_loader.sampler.indices)
 
