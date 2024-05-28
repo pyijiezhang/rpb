@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 
 from rpb import data
-from rpb.eval import compute_risk_rpb, compute_risk_rpb_recursive_step_1, get_loss_01
+from rpb.eval import compute_risk_rpb, compute_risk_rpb_recursive_step_1, mcsampling_01
 
 
 def main(
@@ -75,20 +75,39 @@ def main(
     else:
         loss_ts, kl_ts, E_ts, B_ts = compute_risk_rpb(posteriors, eval_loaders)
 
-    # compute train and test loss
-    test_loader = data.loadbatches_eval(test, loader_kargs, n_test, [n_test], seed)
+    # train and test loss
+    train_loader = data.loadbatches_eval(
+        train, loader_kargs, batch_size, [n_train], seed
+    )[0]
+    test_loader = data.loadbatches_eval(test, loader_kargs, batch_size, [n_test], seed)[
+        0
+    ]
+
     test_loss_ts = []
     for t in range(1, T + 1):
+
         posterior = posteriors[t - start_step]
-        for _, (input_batch, target_batch) in enumerate(tqdm(test_loader[0])):
-            test_loss = get_loss_01(posterior, input_batch, target_batch, sample=True)
-            test_loss_ts.append(test_loss.sum().numpy() / n_test)
+
+        if t == T:
+            train_loss_T = 0
+            for _, (input, target) in enumerate(tqdm(train_loader)):
+                input, target = input.to(device), target.to(device)
+                train_loss_T += mcsampling_01(posterior, input, target) * input.shape[0]
+            train_loss_T /= n_train
+
+        test_loss = 0
+        for _, (input, target) in enumerate(tqdm(test_loader)):
+            input, target = input.to(device), target.to(device)
+            test_loss += mcsampling_01(posterior, input, target) * input.shape[0]
+        test_loss /= n_test
+        test_loss_ts.append(test_loss)
 
     results = {
         "loss": loss_ts,
         "kl": kl_ts,
         "excess_risk": E_ts,
         "risk": B_ts,
+        "train_loss": train_loss_T,
         "test_loss": test_loss_ts,
     }
 
