@@ -208,7 +208,7 @@ def compute_risk_rpb_recursive_step_1(
             E_ts.append(E_t)
             loss_ts.append(loss_excess)
         kl_ts.append(kl)
-    B_ts = compute_B_t(B_1, E_ts, gamma_t)
+    B_ts = compute_B_t(B_1, E_ts[1:], gamma_t)
     return loss_ts, kl_ts, E_ts, B_ts
 
 
