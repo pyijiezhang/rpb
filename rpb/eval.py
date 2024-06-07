@@ -190,7 +190,7 @@ def compute_risk_rpb_recursive_step_1(
                 )
             loss_excess /= n_bound
 
-            B_1, E_1 = compute_B_1_recursive_step_1(
+            B_0, E_1 = compute_B_1_recursive_step_1(
                 loss_01, loss_excess, kl, T, n_bound, gamma_t, delta_test, delta
             )
             E_ts.append(E_1)
@@ -208,7 +208,7 @@ def compute_risk_rpb_recursive_step_1(
             E_ts.append(E_t)
             loss_ts.append(loss_excess)
         kl_ts.append(kl)
-    B_ts = compute_B_t(B_1, E_ts[1:], gamma_t)
+    B_ts = compute_B_t(B_0, E_ts, gamma_t)
     return loss_ts, kl_ts, E_ts, B_ts
 
 
@@ -293,9 +293,7 @@ def compute_B_1_recursive_step_1(
         )
         E_1 += inv_2 * js_minus[i]
 
-    B_1 = E_1 + gamma_t * B_0
-
-    return B_1, E_1
+    return B_0, E_1
 
 
 def compute_E_t(loss_excess, kl, T, gamma_t, n_bound, delta_test=0.01, delta=0.025):
