@@ -21,7 +21,7 @@ def main(
     split="geometric",
     gamma_t=0.5,
     recursive_step_1=False,
-    gamma_ts=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+    gamma_ts=[0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
     sigma_prior=0.03,
     pmin=1e-5,
     delta=0.025,
