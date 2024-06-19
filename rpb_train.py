@@ -1,3 +1,30 @@
+#
+# Runs optimization procedure for recursive PAC-Bayes.
+#
+# Usage: python rpb_train.py  --<argument1>=[option1] --<argument2>=[option2]
+#        name_data   : 'mnist', 'fmnist'
+#        model       : 'fcn', 'cnn'
+#                      'fcn'        = fully connected network
+#                                     used for "name_data" = 'mnist'
+#                      'cnn'        = convolution neural network
+#                                     used for "name_data" = 'fmnist
+#        layer       : 4 (default), add more later
+#        objective   : 'fclassic' (default), 'fquad', 'flamb', 'bbb'
+#                      'fclassic'   = McAllester's bound
+#                      'fquad'      = PAC-Bayes-quadratic bound by Rivasplata et al., 2019
+#                      'flamb'      = PAC-Bayes-lambda by Thiemann et al., 2017
+#                      'bbb'        = a PAC-Bayes inspired optimization objective (see Rivasplata et al., 2019)
+#        T           : integer              : in general
+#                    : 2, 4, 6 (default), 8 : when "split"='geometric'
+#        split       : 'uniform', 'geometric' (default)
+#        gamma_t     : real value in (0, 1)
+#        recursive_step_1     : bool
+#                               true    = recursion only from pi_1
+#                               false   = recursion from pi_0
+#
+# Return: posteriors saved under saved_models/rpb
+#
+
 import os
 import numpy as np
 import torch
@@ -19,10 +46,10 @@ def main(
     gamma_t=0.5,
     recursive_step_1=False,
     sigma_prior=0.03,
-    pmin=1e-5,
+    pmin=1e-5, # to give bounded cross-entropy loss
     delta=0.025,
-    delta_test=0.01,
-    kl_penalty=1,
+    delta_test=0.01, # MC evaluation of a fixed posterior
+    kl_penalty=1, # for objective='bbb', not used in this work
     initial_lamb=1.0,
     train_epochs=50,
     learning_rate=0.005,
@@ -52,10 +79,11 @@ def main(
     n_train = len(train.data)
 
     if split == "uniform":
-        T_splits = [int(n_train / T)] * T
+        T_splits = [int(n_train / T)] * (T-1)
+        T_splits.append(n_train - int(n_train / T)*(T-1))
     elif split == "geometric":
         if T == 2:
-            T_splits = [20000, 40000]
+            T_splits = [30000, 30000]
         elif T == 4:
             T_splits = [7500, 7500, 15000, 30000]
         elif T == 6:
@@ -71,7 +99,7 @@ def main(
         [len(train_loader.sampler.indices) for train_loader in train_loaders]
     )
 
-    for t in range(1, T + 1):
+    for t in range(1, T + 1): # following the index in the paper
 
         train_loader = train_loaders[t - 1]
 
