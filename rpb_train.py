@@ -19,8 +19,8 @@
 #        split       : 'uniform', 'geometric' (default)
 #        gamma_t     : real value in (0, 1)
 #        recursive_step_1     : bool
-#                               true    = recursion only from pi_1
-#                               false   = recursion from pi_0
+#                               true    = recursion from t=1
+#                               false   = recursion from t=2
 #
 # Return: posteriors saved under saved_models/rpb
 #
@@ -134,8 +134,8 @@ def main(
             pmin,
             classes,
             delta,
-            delta_test,
-            kl_penalty,
+            delta_test, # not used in optimization
+            kl_penalty, # not used so =1 in the work
             device,
             n_posterior,
             use_excess_loss=use_excess_loss,
