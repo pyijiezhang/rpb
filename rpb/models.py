@@ -878,6 +878,7 @@ def trainPNNet(
         clamping = False
     else:
         clamping = True # lower-bounding the probability assigned to Y
+                        # to give a bounded cross-entropy loss
 
     for batch_id, (data, target) in enumerate(tqdm(train_loader)):
         data, target = data.to(pbobj.device), target.to(pbobj.device)
