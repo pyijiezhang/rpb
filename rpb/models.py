@@ -594,6 +594,9 @@ class ProbNNet4l(nn.Module):
     init_net : NNet object
         Network object used to initialise the prior
 
+    init_pnet : PNNet object
+        Probabilistic Network object used to initialise the prior
+
     """
 
     def __init__(
@@ -675,6 +678,9 @@ class ProbCNNet4l(nn.Module):
 
     init_net : CNNet object
         Network object used to initialise the prior
+
+    init_pnet : ProbCNNet object
+        Probabilistic Network object used to initialise the prior
 
     """
 
@@ -852,6 +858,12 @@ def trainPNNet(
     verbose: bool
         Whether to print test metrics
 
+    prior : ProbNNet/ProbCNNet object
+        Network object that serves as prior
+
+    gamma_t : in [0,1]
+        The offset parameter for recursive PB
+
     """
     net.train()
     # variables that keep information about the results of optimising the bound
@@ -865,7 +877,7 @@ def trainPNNet(
     if pbobj.objective == "bbb":
         clamping = False
     else:
-        clamping = True
+        clamping = True # lower-bounding the probability assigned to Y
 
     for batch_id, (data, target) in enumerate(tqdm(train_loader)):
         data, target = data.to(pbobj.device), target.to(pbobj.device)

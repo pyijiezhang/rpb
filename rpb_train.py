@@ -46,9 +46,11 @@ def main(
     gamma_t=0.5,
     recursive_step_1=False,
     sigma_prior=0.03,
-    pmin=1e-5, # to give bounded cross-entropy loss
+    pmin=1e-5, # lower-bounding the probability assigned to Y
+               # to give a bounded cross-entropy loss
     delta=0.025,
     delta_test=0.01, # MC evaluation of a fixed posterior
+                     # Used only in evaluation
     kl_penalty=1, # for objective='bbb', not used in this work
     initial_lamb=1.0,
     train_epochs=50,
@@ -105,7 +107,7 @@ def main(
 
         if t == 1:
             prior = init_posterior(model, sigma_prior, prior=None, device=device)
-            n_posterior = n_train
+            n_posterior = n_train # n^val_t in the paper
 
             if recursive_step_1:
                 use_excess_loss = True
@@ -116,18 +118,13 @@ def main(
             torch.save(prior, dir_prior)
         else:
             prior = torch.load(dir_posterior, map_location=torch.device(device))
-            n_posterior = n_train - n_train_t_cumsum[t - 2]
+            n_posterior = n_train - n_train_t_cumsum[t - 2] # n^val_t in the paper
             use_excess_loss = True
 
         print("Current step:", t)
         print("n_posterior:", n_posterior)
 
-        posterior = init_posterior(
-            model,
-            sigma_prior,
-            prior,
-            device,
-        )
+        posterior = init_posterior(model, sigma_prior, prior, device)
 
         bound = PBBobj(
             objective,
@@ -137,7 +134,7 @@ def main(
             delta_test, # not used in optimization
             kl_penalty, # not used so =1 in the work
             device,
-            n_posterior,
+            n_posterior, # n^val_t in the paper
             use_excess_loss=use_excess_loss,
         )
 

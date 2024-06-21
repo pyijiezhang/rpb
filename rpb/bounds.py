@@ -29,14 +29,23 @@ class PBBobj:
         confidence value for the training objective
 
     delta_test : float
-        confidence value for the chernoff bound (used when computing the risk)
+        confidence value for the single hypothesis bound (used when computing the risk)
 
-    kl_penalty : float
+    kl_penalty : float (NOT USED, =1 in the work)
         penalty for the kl coefficient in the training objective
 
     device : string
         Device the code will run in (e.g. 'cuda')
 
+    n_posterior : integer
+        Number of future data for evaluation (n^val_t) in the paper
+
+    use_excess_loss : bool
+        Whether we use excess loss to learn the posterior at the current step
+
+    sample_prior : bool
+        Whether we sample a hypothesis from the prior for each sample
+        
     """
 
     def __init__(
@@ -66,7 +75,6 @@ class PBBobj:
 
     def compute_empirical_risk(self, outputs, targets, bounded=True):
         # compute negative log likelihood loss and bound it with pmin (if applicable)
-        # empirical_risk = F.nll_loss(outputs, targets)
         c2 = 3
         empirical_risk = F.cross_entropy(outputs * c2, targets)
 
@@ -79,7 +87,7 @@ class PBBobj:
         net,
         data,
         target,
-        clamping=True,
+        clamping=True, # lower-bounding the probability assigned to Y
         prior=None,
         gamma_t=0.5,
     ):
