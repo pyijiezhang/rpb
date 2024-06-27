@@ -532,7 +532,6 @@ class NNet4l(nn.Module):
         x = F.relu(x)
         x = self.d(self.l3(x))
         x = F.relu(x)
-        #x = output_transform(self.l4(x), clamping=False)
         x = self.l4(x)
         return x
 
@@ -647,12 +646,11 @@ class ProbNNet4l(nn.Module):
             init_player=init_pnet.l4 if init_pnet else None,
         )
 
-    def forward(self, x, sample=False, clamping=True, pmin=1e-4):
+    def forward(self, x, sample=False):
         x = x.view(-1, 28 * 28)
         x = F.relu(self.l1(x, sample))
         x = F.relu(self.l2(x, sample))
         x = F.relu(self.l3(x, sample))
-        #x = output_transform(self.l4(x, sample), clamping, pmin)
         x = self.l4(x)
         return x
 
@@ -736,25 +734,26 @@ class ProbCNNet4l(nn.Module):
             init_player=init_pnet.fc2 if init_pnet else None,
         )
 
-    def forward(self, x, sample=False, clamping=True, pmin=1e-4):
+    def forward(self, x, sample=False):
         # forward pass for the network
         x = F.relu(self.conv1(x, sample))
         x = F.relu(self.conv2(x, sample))
         x = F.max_pool2d(x, 2)
         x = torch.flatten(x, 1)
         x = F.relu(self.fc1(x, sample))
-        #x = output_transform(self.fc2(x, sample), clamping, pmin)
-        x = self.fc2(x)
+        x = self.fc2(x, sample)
         return x
 
     def compute_kl(self):
         # KL as a sum of the KL for each individual layer
         return self.conv1.kl_div + self.conv2.kl_div + self.fc1.kl_div + self.fc2.kl_div
 
+# NOT USED
 def output_logprobability(x, c2=3):
     output = F.log_softmax(c2 * x, dim=1)
     return output
 
+# NOT USED
 def output_transform(x, clamping=False, pmin=1e-4):
     """Computes the log softmax and clamps the values using the
     min probability given by pmin.
@@ -912,7 +911,7 @@ def trainPNNet(
             # for flamb we also need to optimise the lambda variable
             lambda_var.zero_grad()
             bound_l, kl_l, _, loss_l, err_l = pbobj.train_obj(
-                net, input, target, clamping=clamping, lambda_var=lambda_var, prior=prior
+                net, input, target, clamping=clamping, lambda_var=lambda_var, prior=prior, gamma_t = gamma_t
             )
             bound_l.backward()
             optimizer_lambda.step()
