@@ -895,8 +895,8 @@ def trainPNNet(
             net,
             input,
             target,
-            lambda_var=lambda_var,
             clamping=clamping,
+            lambda_var=lambda_var,
             prior=prior,
             gamma_t=gamma_t,
         )
@@ -912,7 +912,7 @@ def trainPNNet(
             # for flamb we also need to optimise the lambda variable
             lambda_var.zero_grad()
             bound_l, kl_l, _, loss_l, err_l = pbobj.train_obj(
-                net, input, target, lambda_var=lambda_var, clamping=clamping, prior=prior
+                net, input, target, clamping=clamping, lambda_var=lambda_var, prior=prior
             )
             bound_l.backward()
             optimizer_lambda.step()
