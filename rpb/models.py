@@ -804,10 +804,10 @@ def trainNNet(net, optimizer, epoch, train_loader, device="cuda", verbose=False)
     # train and report training metrics
     net.train()
     total, correct, avgloss = 0.0, 0.0, 0.0
-    for batch_id, (data, target) in enumerate(tqdm(train_loader)):
-        data, target = data.to(device), target.to(device)
+    for batch_id, (input, target) in enumerate(tqdm(train_loader)):
+        input, target = input.to(device), target.to(device)
         net.zero_grad()
-        output = net(data)
+        output = net(input)
         loss = F.cross_entropy(output, target)
         loss.backward()
         optimizer.step()
@@ -884,15 +884,16 @@ def trainPNNet(
     if pbobj.objective == "bbb":
         clamping = False
     else:
-        clamping = True # lower-bounding the probability assigned to Y
-                        # to give a bounded cross-entropy loss
+        # lower-bounding the probability assigned to Y
+        # to give a bounded cross-entropy loss for the training objective
+        clamping = True
 
-    for batch_id, (data, target) in enumerate(tqdm(train_loader)):
-        data, target = data.to(pbobj.device), target.to(pbobj.device)
+    for batch_id, (input, target) in enumerate(tqdm(train_loader)):
+        input, target = input.to(pbobj.device), target.to(pbobj.device)
         net.zero_grad()
         bound, kl, _, loss, err = pbobj.train_obj(
             net,
-            data,
+            input,
             target,
             lambda_var=lambda_var,
             clamping=clamping,
@@ -911,7 +912,7 @@ def trainPNNet(
             # for flamb we also need to optimise the lambda variable
             lambda_var.zero_grad()
             bound_l, kl_l, _, loss_l, err_l = pbobj.train_obj(
-                net, data, target, lambda_var=lambda_var, clamping=clamping, prior=prior
+                net, input, target, lambda_var=lambda_var, clamping=clamping, prior=prior
             )
             bound_l.backward()
             optimizer_lambda.step()
