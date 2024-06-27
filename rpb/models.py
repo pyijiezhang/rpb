@@ -532,7 +532,8 @@ class NNet4l(nn.Module):
         x = F.relu(x)
         x = self.d(self.l3(x))
         x = F.relu(x)
-        x = output_transform(self.l4(x), clamping=False)
+        #x = output_transform(self.l4(x), clamping=False)
+        x = self.l4(x)
         return x
 
 
@@ -569,8 +570,9 @@ class CNNet4l(nn.Module):
         x = self.d(self.fc1(x))
         x = F.relu(x)
         x = self.fc2(x)
-        output = F.log_softmax(x, dim=1)
-        return output
+        #output = F.log_softmax(x, dim=1)
+        #return output
+        return x
 
 
 class ProbNNet4l(nn.Module):
@@ -650,7 +652,8 @@ class ProbNNet4l(nn.Module):
         x = F.relu(self.l1(x, sample))
         x = F.relu(self.l2(x, sample))
         x = F.relu(self.l3(x, sample))
-        x = output_transform(self.l4(x, sample), clamping, pmin)
+        #x = output_transform(self.l4(x, sample), clamping, pmin)
+        x = self.l4(x)
         return x
 
     def compute_kl(self):
@@ -740,15 +743,19 @@ class ProbCNNet4l(nn.Module):
         x = F.max_pool2d(x, 2)
         x = torch.flatten(x, 1)
         x = F.relu(self.fc1(x, sample))
-        x = output_transform(self.fc2(x, sample), clamping, pmin)
+        #x = output_transform(self.fc2(x, sample), clamping, pmin)
+        x = self.fc2(x)
         return x
 
     def compute_kl(self):
         # KL as a sum of the KL for each individual layer
         return self.conv1.kl_div + self.conv2.kl_div + self.fc1.kl_div + self.fc2.kl_div
 
+def output_logprobability(x, c2=3):
+    output = F.log_softmax(c2 * x, dim=1)
+    return output
 
-def output_transform(x, clamping=True, pmin=1e-4):
+def output_transform(x, clamping=False, pmin=1e-4):
     """Computes the log softmax and clamps the values using the
     min probability given by pmin.
 
@@ -801,7 +808,7 @@ def trainNNet(net, optimizer, epoch, train_loader, device="cuda", verbose=False)
         data, target = data.to(device), target.to(device)
         net.zero_grad()
         output = net(data)
-        loss = F.nll_loss(output, target)
+        loss = F.cross_entropy(output, target)
         loss.backward()
         optimizer.step()
         pred = output.max(1, keepdim=True)[1]

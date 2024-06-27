@@ -4,6 +4,7 @@ from scipy.stats import binom
 from scipy import optimize
 from math import log
 from tqdm import tqdm, trange
+import torch.nn.functional as F
 
 
 def get_loss_01(pi, input, target, sample=True):
@@ -14,7 +15,8 @@ def get_loss_01(pi, input, target, sample=True):
         target  - data Y
     Outputs: a vector with size = len(X)
     """
-    outputs = pi(input, sample=sample, clamping=True, pmin=1e-5)
+    outputs = pi(input, sample=sample)
+    outputs = F.log_softmax(outputs, dim=1)
     pred = outputs.max(1)[1]
     loss_01 = (pred != target).long()
     return loss_01

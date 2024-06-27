@@ -76,7 +76,10 @@ class PBBobj:
     def compute_empirical_risk(self, outputs, targets, bounded=True):
         # compute negative log likelihood loss and bound it with pmin (if applicable)
         c2 = 3
-        empirical_risk = F.cross_entropy(outputs * c2, targets)
+        pmin = 1e-5
+        outputs = F.log_softmax(c2 * outputs, dim=1)
+        outputs = torch.clamp(outputs, np.log(pmin))
+        empirical_risk = F.cross_entropy(outputs, targets)
 
         if bounded == True:
             empirical_risk = (1.0 / (np.log(1.0 / self.pmin))) * empirical_risk
@@ -94,7 +97,7 @@ class PBBobj:
         # compute both cross entropy and 01 loss
         # returns outputs of the network as well
 
-        outputs = net(data, sample=True, clamping=clamping, pmin=self.pmin)
+        outputs = net(data, sample=True)
         loss_ce = self.compute_empirical_risk(outputs, target, clamping)
         pred = outputs.max(1, keepdim=True)[1]
         correct = pred.eq(target.view_as(pred)).sum().item()
@@ -107,15 +110,20 @@ class PBBobj:
 
             c1 = 3
             c2 = 3
+            pmin = 1e-5
 
             outputs_prior = prior(
-                data, sample=self.sample_prior, clamping=clamping, pmin=self.pmin
+                data, sample=self.sample_prior
             )
+            outputs_prior = F.log_softmax(c2 * outputs_prior, dim=1)
+            outputs_prior = torch.clamp(outputs_prior, np.log(pmin))
             loss_ce_excess_prior = F.cross_entropy(
-                outputs_prior * c1, target, reduce=False
+                outputs_prior, target, reduce=False
             )
+            outputs = F.log_softmax(c2 * outputs, dim=1)
+            outputs = torch.clamp(outputs, np.log(pmin))
             loss_ce_excess_posterior = F.cross_entropy(
-                outputs * c2, target, reduce=False
+                outputs, target, reduce=False
             )
             loss_ce_excess = loss_ce_excess_posterior - loss_ce_excess_prior * gamma_t
 
