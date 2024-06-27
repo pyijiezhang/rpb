@@ -213,26 +213,39 @@ class PBBobj:
             train_obj = rv[0] + train_obj_total
         return train_obj
 
-    def train_obj(
-        self,
-        net,
-        input,
-        target,
-        clamping=True,
-        lambda_var=None,
-        prior=None,
-        gamma_t=0.5,
-    ):
-        # compute train objective and return all metrics
+    def train_obj(self, net, input, target, clamping=True, lambda_var=None, prior=None, gamma_t=0.5):
+        """ Compute train objective and return all metrics
+
+            Parameters
+            ----------
+            net : NNet/CNNet object
+                Network object to train
+
+            input : tensor
+                input feature
+
+            target : tensor
+                the label of the input
+
+            clamping : bool
+                whether to clamp the output probabilities
+
+            lambda_var : Lambda_var object
+                Lambda variable for training objective flamb
+
+            prior : NNet/CNNet object
+                The prior
+
+            gamma_t : in [0,1]
+                The offset parameter for recursive PB        
+        """
         outputs = torch.zeros(target.size(0), self.classes).to(self.device)
         kl = net.compute_kl()
         loss_ce, loss_01, outputs, loss_excess = self.compute_losses(
             net, input, target, clamping, prior, gamma_t
         )
         if self.use_excess_loss:
-            train_obj = self.bound(
-                loss_excess, kl, self.n_posterior, lambda_var, gamma_t
-            )
+            train_obj = self.bound(loss_excess, kl, self.n_posterior, lambda_var, gamma_t)
         else:
             train_obj = self.bound(loss_ce, kl, self.n_posterior, lambda_var, gamma_t)
         return train_obj, kl / self.n_posterior, outputs, loss_ce, loss_01
