@@ -88,7 +88,7 @@ class PBBobj:
     def compute_losses(
         self,
         net,
-        data,
+        input,
         target,
         clamping=True, # lower-bounding the probability assigned to Y
         prior=None,
@@ -97,7 +97,7 @@ class PBBobj:
         # compute both cross entropy and 01 loss
         # returns outputs of the network as well
 
-        outputs = net(data, sample=True)
+        outputs = net(input, sample=True)
         loss_ce = self.compute_empirical_risk(outputs, target, clamping)
         pred = outputs.max(1, keepdim=True)[1]
         correct = pred.eq(target.view_as(pred)).sum().item()
@@ -112,9 +112,7 @@ class PBBobj:
             c2 = 3
             pmin = 1e-5
 
-            outputs_prior = prior(
-                data, sample=self.sample_prior
-            )
+            outputs_prior = prior(input, sample=self.sample_prior)
             outputs_prior = F.log_softmax(c2 * outputs_prior, dim=1)
             outputs_prior = torch.clamp(outputs_prior, np.log(pmin))
             loss_ce_excess_prior = F.cross_entropy(
