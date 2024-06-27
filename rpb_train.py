@@ -19,8 +19,8 @@
 #        split       : 'uniform', 'geometric' (default)
 #        gamma_t     : real value in (0, 1)
 #        recursive_step_1     : bool
-#                               true    = recursion from t=1
-#                               false   = recursion from t=2
+#                               true              = recursion from t=1
+#                               false (default)   = recursion from t=2
 #
 # Return: posteriors saved under saved_models/rpb
 #
@@ -106,6 +106,7 @@ def main(
         train_loader = train_loaders[t - 1]
 
         if t == 1:
+            # initialize an uninformed prior pi_0
             prior = init_posterior(model, sigma_prior, prior=None, device=device)
             n_posterior = n_train # n^val_t in the paper
 
@@ -117,6 +118,7 @@ def main(
             dir_prior = f"./saved_models/rpb/posterior_0_" + exp_settings
             torch.save(prior, dir_prior)
         else:
+            # initialize the prior by the previous posterior
             prior = torch.load(dir_posterior, map_location=torch.device(device))
             n_posterior = n_train - n_train_t_cumsum[t - 2] # n^val_t in the paper
             use_excess_loss = True
@@ -124,8 +126,10 @@ def main(
         print("Current step:", t)
         print("n_posterior:", n_posterior)
 
+        # initialize posterior
         posterior = init_posterior(model, sigma_prior, prior, device)
 
+        # define the bound used to learn the posterior
         bound = PBBobj(
             objective,
             pmin,
@@ -147,22 +151,24 @@ def main(
             optimizer_lambda = None
             lambda_var = None
 
+        # define the optimizer
         optimizer = optim.SGD(
             posterior.parameters(), lr=learning_rate, momentum=momentum
         )
 
+        # train the posterior for - train_epochs - epochs
         for epoch in trange(train_epochs):
             trainPNNet(
                 posterior,
-                optimizer,
-                bound,
-                epoch,
+                optimizer, # using the defined optimizer
+                bound, # using the defined bound
+                epoch, # the current training epoch
                 train_loader,
                 lambda_var,
                 optimizer_lambda,
                 verbose,
-                prior,
-                gamma_t,
+                prior, # using the defined prior
+                gamma_t, # using the offset gamma_t when training with the excess loss
             )
 
         dir_posterior = f"./saved_models/rpb/posterior_{t}_" + exp_settings
