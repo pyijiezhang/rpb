@@ -129,8 +129,8 @@ def main(
         # initialize posterior
         posterior = init_posterior(model, sigma_prior, prior, device)
 
-        # define the bound used to learn the posterior
-        bound = PBBobj(
+        # define the PAC-Bayes inspired bound used to learn the posterior
+        pbobj = PBBobj(
             objective,
             pmin,
             classes,
@@ -161,7 +161,7 @@ def main(
             trainPNNet(
                 posterior,
                 optimizer, # using the defined optimizer
-                bound, # using the defined bound
+                pbobj, # using the defined bound
                 epoch, # the current training epoch
                 train_loader,
                 lambda_var,
