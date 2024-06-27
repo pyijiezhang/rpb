@@ -57,7 +57,7 @@ def main(
 
     prior = init_posterior(model, sigma_prior, prior=None, device=device)
 
-    bound = PBBobj(
+    pbobj = PBBobj(
         objective,
         pmin,
         classes,
@@ -84,7 +84,7 @@ def main(
         trainPNNet(
             prior,
             optimizer,
-            bound,
+            pbobj,
             epoch,
             train_loader_prior,
             lambda_var,
@@ -97,7 +97,7 @@ def main(
 
     posterior = init_posterior(model, sigma_prior, prior=prior, device=device)
 
-    bound = PBBobj(
+    pbobj = PBBobj(
         objective,
         pmin,
         classes,
@@ -124,7 +124,7 @@ def main(
         trainPNNet(
             posterior,
             optimizer,
-            bound,
+            pbobj,
             epoch,
             train_loader_posterior,
             lambda_var,
