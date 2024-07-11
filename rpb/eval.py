@@ -40,7 +40,7 @@ def get_excess_j(loss_01_posterior, loss_01_prior, js, gamma_t):
 
 
 def mcsampling_01(pi, input, target, sample=True):
-    """Compute expectation of 0-1 loss of h~pi(h) for each data.
+    """Compute the mean of 0-1 loss of h~pi(h) for data (X, Y).
     Inputs:
         pi      - can be prior or posterior
         input   - data X
@@ -87,11 +87,11 @@ def mcsampling_excess(posterior, prior, input, target, sample_prior=True, gamma_
         delta_js += delta_js_mc
     return delta_js.cpu().numpy() / mc_samples
 
-
 def compute_risk_rpb(
     posteriors, eval_loaders, gamma_t=0.5, delta_test=0.01, delta=0.025
 ):
-    """Compute risk of T-step posteriors.
+    """ Compute risk of T-step posteriors.
+        Use B_1 and (E_t)_{t\ge 2}.
     Inputs:
         posteriors      - the recursive posteriors
         gamma_t         - offset parameter of the excess loss
@@ -107,28 +107,32 @@ def compute_risk_rpb(
     E_ts = []
     B_ts = []
     for t in range(1, T + 1):
-
+        # load posterior
         posterior = posteriors[t - 1]
         posterior.eval()
-
-        kl = posterior.compute_kl().detach().cpu().numpy()
-
+        # load eval data
         eval_loader = eval_loaders[t - 1]
         n_bound = len(eval_loader.sampler.indices)
 
         print("Current step:", t)
         print("n_bound:", n_bound)
 
+        # compute kl between the posterior and its prior
+        kl = posterior.compute_kl().detach().cpu().numpy()
+        kl_ts.append(kl)
+
         if t == 1:
+            # compute B_1 using 0-1 losses
             loss_01 = 0
             for _, (input, target) in enumerate(tqdm(eval_loader)):
                 input, target = input.to(device), target.to(device)
                 loss_01 += mcsampling_01(posterior, input, target) * input.shape[0]
-            loss_01 /= n_bound  # check
+            loss_01 /= n_bound
+
             B_1 = compute_B_1(loss_01, kl, T, n_bound, delta_test, delta)
             loss_ts.append(loss_01)
         else:
-
+            # compute E_t using excess losses
             prior = posteriors[t - 2]
             prior.eval()
 
@@ -140,10 +144,12 @@ def compute_risk_rpb(
                     * input.shape[0]
                 )
             loss_excess /= n_bound
+
             E_t = compute_E_t(loss_excess, kl, T, gamma_t, n_bound, delta_test, delta)
             E_ts.append(E_t)
             loss_ts.append(loss_excess)
-        kl_ts.append(kl)
+    
+    # compute B_t recursively using B_1, (E_t)_t and gamma_t
     B_ts = compute_B_t(B_1, E_ts, gamma_t)
     return loss_ts, kl_ts, E_ts, B_ts
 
@@ -151,6 +157,14 @@ def compute_risk_rpb(
 def compute_risk_rpb_recursive_step_1(
     posteriors, eval_loaders, gamma_t=0.5, delta_test=0.01, delta=0.025
 ):
+    """ Compute risk of T-step posteriors.
+        Use B_0 and (E_t)_{t\ge 1}.
+    Inputs:
+        posteriors      - the recursive posteriors
+        gamma_t         - offset parameter of the excess loss
+        delta_test      - for the test set bound of the posteriors
+        eval_loaders    - evaluation datasets for the recursive posteriors
+    """
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -160,28 +174,29 @@ def compute_risk_rpb_recursive_step_1(
     E_ts = []
     B_ts = []
     for t in range(1, T + 1):
-
+        # load prior
         prior = posteriors[t - 1]
         prior.eval()
-
+        # load posterior
         posterior = posteriors[t]
         posterior.eval()
-
-        kl = posterior.compute_kl().detach().cpu().numpy()
-
+        # load eval data
         eval_loader = eval_loaders[t - 1]
         n_bound = len(eval_loader.sampler.indices)
 
         print("Current step:", t)
         print("n_bound:", n_bound)
 
-        if t == 1:
+        # compute kl between the posterior and its prior
+        kl = posterior.compute_kl().detach().cpu().numpy()
+        kl_ts.append(kl)
 
+        if t == 1:
             loss_01 = 0
             for _, (input, target) in enumerate(tqdm(eval_loader)):
                 input, target = input.to(device), target.to(device)
                 loss_01 += mcsampling_01(prior, input, target) * input.shape[0]
-            loss_01 /= n_bound  # check
+            loss_01 /= n_bound
 
             loss_excess = 0
             for _, (input, target) in enumerate(tqdm(eval_loader)):
@@ -209,9 +224,40 @@ def compute_risk_rpb_recursive_step_1(
             E_t = compute_E_t(loss_excess, kl, T, gamma_t, n_bound, delta_test, delta)
             E_ts.append(E_t)
             loss_ts.append(loss_excess)
-        kl_ts.append(kl)
+        
     B_ts = compute_B_t(B_0, E_ts, gamma_t)
     return loss_ts, kl_ts, E_ts, B_ts
+
+def compute_risk_rpb_laststep(
+    posterior, eval_loader, delta_test=0.01, delta=0.025
+):
+    """ Bound \pi_T by \pi_{T-1} without further recursion
+        \pi_{T_1} is only needed for computing kl, which is already recorded by posterior
+    Inputs:
+        posterior       - \pi_T
+        delta_test      - for the test set bound of the posteriors
+        eval_loader    - evaluation dataset
+    """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    posterior.eval()
+    n_bound = len(eval_loader.sampler.indices)
+    print("n_bound:", n_bound)
+
+    kl = posterior.compute_kl().detach().cpu().numpy()
+
+    loss_01 = 0
+    for _, (input, target) in enumerate(tqdm(eval_loader)):
+        input, target = input.to(device), target.to(device)
+        loss_01 += mcsampling_01(posterior, input, target) * input.shape[0]
+    loss_01 /= n_bound
+
+    inv_1 = solve_kl_sup(loss_01, np.log(1 / delta_test) / n_bound)
+    B_T = solve_kl_sup(
+        inv_1,
+        (kl + np.log((2 * np.sqrt(n_bound)) / delta)) / n_bound,
+    )
+    return [loss_01], [kl], [B_T]
 
 
 def compute_risk_rpb_onestep(
