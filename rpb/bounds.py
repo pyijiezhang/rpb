@@ -83,24 +83,31 @@ class PBBobj:
         self.c1 = c1
         self.c2 = c2
 
-    def compute_negative_log_losses(self, outputs, targets, bounded=True, reduce=True):
+    def compute_negative_log_losses(self, outputs, targets, bounded=True, reduce=True, rescale=True):
         """ compute negative log likelihood loss and bound it with pmin (if applicable)
             outputs : real-valued vector
                 output of the network (R^K)
             bounded : bool
-                return a bounded loss (by clamping) or not
+                return a bounded loss or not
             reduce : bool
                 True = return the average loss over samples
                 False = return losses for all samples
+            rescale : bool
+                True = rescale it to [0,1].
+                False = do not rescale it to [0,1]. Used when learning the excess loss
         """
+        # compute logprobs from outputs
         logprobs = F.log_softmax(self.c2 * outputs, dim=1)  # log probability with softmax parameter c2
         if bounded == True:
-            logprobs = torch.clamp(logprobs, np.log(self.pmin)) # lower-bounding the probability
-            empirical_risk = F.nll_loss(logprobs, targets, reduce=reduce) # compute the negative log loss
-            #empirical_risk = (1.0 / (np.log(1.0 / self.pmin))) * empirical_risk # DO NOT RESCALE
-        else:
-            empirical_risk = F.cross_entropy(logprobs, targets, reduce=reduce) # compute the cross-entropy loss
-        return empirical_risk
+            probs = torch.exp(logprobs) # probability distribution
+            probs = (1-self.pmin) * probs + self.pmin * torch.ones((len(targets), self.classes)) / self.classes # lower-bounding the probability by pmin
+            logprobs = torch.log(probs) # back to log probability
+        # compute negative log loss from logprobs
+        nll_risk = F.nll_loss(logprobs, targets, reduce=reduce)
+        
+        if rescale == True:
+            nll_risk = (1.0 / (np.log(self.classes / self.pmin))) * nll_risk
+        return nll_risk
 
     def compute_losses(self, net, input, target, bounded=True, prior=None, gamma_t=0.5):
         # compute both cross-entropy loss, 01 loss, and excess loss
@@ -109,8 +116,7 @@ class PBBobj:
         outputs = net(input, sample=True) # output of the network (R^K)
 
         # compute the cross-entropy loss
-        loss_ce = self.compute_negative_log_losses(outputs, target, bounded, reduce=True)
-        #loss_ce = (1.0 / (np.log(1.0 / self.pmin))) * loss_ce
+        loss_ce = self.compute_negative_log_losses(outputs, target, bounded, reduce=True, rescale=True)
 
         # compute the 01 loss
         pred = outputs.max(1, keepdim=True)[1]
@@ -124,36 +130,9 @@ class PBBobj:
             prior.eval()
 
             outputs_prior = prior(input, sample=self.sample_prior)
-            #logprobs_prior = F.log_softmax(self.c2 * outputs_prior, dim=1)
-            #logprobs_prior = torch.clamp(logprobs_prior, np.log(self.pmin))
-            #loss_ce_excess_prior = F.cross_entropy(
-            #    logprobs_prior, target, reduce=False
-            #)
-            loss_ce_excess_prior = self.compute_negative_log_losses(outputs_prior, target, bounded, reduce=False)
-            #print("ce_prior : ", loss_ce_excess_prior[:10])
-            #pred_prior = outputs_prior.max(1, keepdim=True)[1]
-            #correct_prior = pred_prior.eq(target.view_as(pred_prior)).long()
-            #correct_prior = torch.squeeze(correct_prior, 1)
-            #loss_01_prior = 1 - correct_prior
-            #print("loss_01_prior : ", loss_01_prior[:10])
-            ##outputs = F.log_softmax(c2 * outputs, dim=1)
-            ##outputs = torch.clamp(outputs, np.log(pmin))
-            #loss_ce_excess_posterior = F.cross_entropy(
-            #    outputs, target, reduce=False
-            #)
-            loss_ce_excess_posterior = self.compute_negative_log_losses(outputs, target, bounded, reduce=False)
-            #print("ce_posterior : ", loss_ce_excess_posterior[:10])
-            #pred_posterior = outputs.max(1, keepdim=True)[1]
-            #correct_posterior = pred_posterior.eq(target.view_as(pred_posterior)).long()
-            #correct_posterior = torch.squeeze(correct_posterior, 1)
-            #loss_01_posterior = 1 - correct_posterior
-            #print("loss_01_posterior : ", loss_01_posterior[:10])
+            loss_ce_excess_prior = self.compute_negative_log_losses(outputs_prior, target, bounded, reduce=False, rescale=False)
+            loss_ce_excess_posterior = self.compute_negative_log_losses(outputs, target, bounded, reduce=False, rescale=False)
             loss_ce_excess = loss_ce_excess_posterior - loss_ce_excess_prior * gamma_t
-            #print("ce_excess_loss : ", loss_ce_excess[:10])
-            #loss_01_excess = loss_01_posterior - loss_01_prior * gamma_t
-            #print("01_excess_loss : ", loss_01_excess[:10])
-            #print("01_excess_diff : ", loss_ce_excess[:10] - loss_01_excess[:10])
-            #print("-------------------")
 
             loss_excess = []
             if gamma_t == 1:
