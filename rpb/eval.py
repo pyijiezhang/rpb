@@ -130,7 +130,7 @@ def compute_risk_rpb(
                 loss_01 += mcsampling_01(posterior, input, target) * input.shape[0]
             loss_01 /= n_bound
 
-            B_1 = _(loss_01, kl, T, n_bound, delta_test, delta)
+            B_1 = _compute_B_1(loss_01, kl, T, n_bound, delta_test, delta)
             loss_ts.append(loss_01)
         else:
             # compute E_t using excess losses
