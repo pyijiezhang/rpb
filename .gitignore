@@ -1,7 +1,14 @@
 fmnist-data/
 mnist-data/
 *pyc
-*pt
 .DS_Store
 *out
 *sh
+*pt
+*png
+*xlsx
+*zip
+kl_split_utils.py
+checks.ipynb
+*numbers
+*ipynb
