@@ -5,7 +5,12 @@ import numpy as np
 from tqdm import tqdm
 
 from rpb import data
-from rpb.eval import compute_risk_rpb, compute_risk_rpb_recursive_step_1, mcsampling_01, compute_risk_rpb_laststep
+from rpb.eval import (
+    compute_risk_rpb,
+    compute_risk_rpb_recursive_step_1,
+    mcsampling_01,
+    compute_risk_rpb_laststep,
+)
 
 
 def main(
@@ -39,8 +44,8 @@ def main(
     n_test = len(test)
 
     if split == "uniform":
-        T_splits = [int(n_train / T)] * (T-1)
-        T_splits.append(n_train - int(n_train / T)*(T-1))
+        T_splits = [int(n_train / T)] * (T - 1)
+        T_splits.append(n_train - int(n_train / T) * (T - 1))
     elif split == "geometric":
         if T == 2:
             T_splits = [20000, 40000]
@@ -51,7 +56,9 @@ def main(
         elif T == 8:
             T_splits = [468, 469, 938, 1875, 3750, 7500, 15000, 30000]
 
-    eval_loaders = data.loadbatches_eval(train, loader_kargs, batch_size, T_splits, seed)
+    eval_loaders = data.loadbatches_eval(
+        train, loader_kargs, batch_size, T_splits, seed
+    )
 
     # load posteriors
     posteriors = []
@@ -69,16 +76,24 @@ def main(
 
     # compute risk
     if risk_laststep:
-        E_ts = [0.]
-        loss_ts, kl_ts, B_ts = compute_risk_rpb_laststep(posteriors[-1], eval_loaders[-1])
+        E_ts = [0.0]
+        loss_ts, kl_ts, B_ts = compute_risk_rpb_laststep(
+            posteriors[-1], eval_loaders[-1]
+        )
     elif recursive_step_1:
-        loss_ts, kl_ts, E_ts, B_ts = compute_risk_rpb_recursive_step_1(posteriors, eval_loaders)
+        loss_ts, kl_ts, E_ts, B_ts = compute_risk_rpb_recursive_step_1(
+            posteriors, eval_loaders
+        )
     else:
         loss_ts, kl_ts, E_ts, B_ts = compute_risk_rpb(posteriors, eval_loaders)
 
     # compute train and test loss
-    train_loader = data.loadbatches_eval(train, loader_kargs, batch_size, [n_train], seed)[0]
-    test_loader = data.loadbatches_eval(test, loader_kargs, batch_size, [n_test], seed)[0]
+    train_loader = data.loadbatches_eval(
+        train, loader_kargs, batch_size, [n_train], seed
+    )[0]
+    test_loader = data.loadbatches_eval(test, loader_kargs, batch_size, [n_test], seed)[
+        0
+    ]
 
     test_loss_ts = []
     for t in range(1, T + 1):
@@ -111,6 +126,8 @@ def main(
 
     if not os.path.exists("./results/rpb"):
         os.makedirs("./results/rpb", exist_ok=True)
+
+    exp_settings = f"{name_data}_{model}_{layers}_{objective}_{split}_{T}_{recursive_step_1}_{risk_laststep}_{gamma_t}_{seed}.pt"
     results_dir = f"./results/rpb/results_" + exp_settings
 
     with open(results_dir, "wb") as handle:

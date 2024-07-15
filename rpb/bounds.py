@@ -51,7 +51,7 @@ class PBBobj:
 
     c2 : float
         Parameter of softmax function to turn the output of the network to prediction
-        
+
     """
 
     def __init__(
@@ -83,28 +83,34 @@ class PBBobj:
         self.c1 = c1
         self.c2 = c2
 
-    def compute_negative_log_losses(self, outputs, targets, bounded=True, reduce=True, rescale=True):
-        """ compute negative log likelihood loss and bound it with pmin (if applicable)
-            outputs : real-valued vector
-                output of the network (R^K)
-            bounded : bool
-                return a bounded loss or not
-            reduce : bool
-                True = return the average loss over samples
-                False = return losses for all samples
-            rescale : bool
-                True = rescale it to [0,1].
-                False = do not rescale it to [0,1]. Used when learning the excess loss
+    def compute_negative_log_losses(
+        self, outputs, targets, bounded=True, reduce=True, rescale=True
+    ):
+        """compute negative log likelihood loss and bound it with pmin (if applicable)
+        outputs : real-valued vector
+            output of the network (R^K)
+        bounded : bool
+            return a bounded loss or not
+        reduce : bool
+            True = return the average loss over samples
+            False = return losses for all samples
+        rescale : bool
+            True = rescale it to [0,1].
+            False = do not rescale it to [0,1]. Used when learning the excess loss
         """
         # compute logprobs from outputs
-        logprobs = F.log_softmax(self.c2 * outputs, dim=1)  # log probability with softmax parameter c2
+        logprobs = F.log_softmax(
+            self.c2 * outputs, dim=1
+        )  # log probability with softmax parameter c2
         if bounded == True:
-            probs = torch.exp(logprobs) # probability distribution
-            probs = (1-self.pmin) * probs + self.pmin * torch.ones((len(targets), self.classes)) / self.classes # lower-bounding the probability by pmin
-            logprobs = torch.log(probs) # back to log probability
+            probs = torch.exp(logprobs)  # probability distribution
+            probs = (1 - self.pmin) * probs + self.pmin * torch.ones(
+                (len(targets), self.classes), device=self.device
+            ) / self.classes  # lower-bounding the probability by pmin
+            logprobs = torch.log(probs)  # back to log probability
         # compute negative log loss from logprobs
         nll_risk = F.nll_loss(logprobs, targets, reduce=reduce)
-        
+
         if rescale == True:
             nll_risk = (1.0 / (np.log(self.classes / self.pmin))) * nll_risk
         return nll_risk
@@ -113,10 +119,12 @@ class PBBobj:
         # compute both cross-entropy loss, 01 loss, and excess loss
         # returns outputs of the network as well
 
-        outputs = net(input, sample=True) # output of the network (R^K)
+        outputs = net(input, sample=True)  # output of the network (R^K)
 
         # compute the cross-entropy loss
-        loss_ce = self.compute_negative_log_losses(outputs, target, bounded, reduce=True, rescale=True)
+        loss_ce = self.compute_negative_log_losses(
+            outputs, target, bounded, reduce=True, rescale=True
+        )
 
         # compute the 01 loss
         pred = outputs.max(1, keepdim=True)[1]
@@ -130,8 +138,12 @@ class PBBobj:
             prior.eval()
 
             outputs_prior = prior(input, sample=self.sample_prior)
-            loss_ce_excess_prior = self.compute_negative_log_losses(outputs_prior, target, bounded, reduce=False, rescale=False)
-            loss_ce_excess_posterior = self.compute_negative_log_losses(outputs, target, bounded, reduce=False, rescale=False)
+            loss_ce_excess_prior = self.compute_negative_log_losses(
+                outputs_prior, target, bounded, reduce=False, rescale=False
+            )
+            loss_ce_excess_posterior = self.compute_negative_log_losses(
+                outputs, target, bounded, reduce=False, rescale=False
+            )
             loss_ce_excess = loss_ce_excess_posterior - loss_ce_excess_prior * gamma_t
 
             loss_excess = []
@@ -221,31 +233,40 @@ class PBBobj:
             train_obj = rv[0] + train_obj_total
         return train_obj
 
-    def train_obj(self, net, input, target, clamping=True, lambda_var=None, prior=None, gamma_t=0.5):
-        """ Compute train objective and return all metrics
+    def train_obj(
+        self,
+        net,
+        input,
+        target,
+        clamping=True,
+        lambda_var=None,
+        prior=None,
+        gamma_t=0.5,
+    ):
+        """Compute train objective and return all metrics
 
-            Parameters
-            ----------
-            net : NNet/CNNet object
-                Network object to train
+        Parameters
+        ----------
+        net : NNet/CNNet object
+            Network object to train
 
-            input : tensor
-                input feature
+        input : tensor
+            input feature
 
-            target : tensor
-                the label of the input
+        target : tensor
+            the label of the input
 
-            clamping : bool
-                whether to clamp the output probabilities
+        clamping : bool
+            whether to clamp the output probabilities
 
-            lambda_var : Lambda_var object
-                Lambda variable for training objective flamb
+        lambda_var : Lambda_var object
+            Lambda variable for training objective flamb
 
-            prior : NNet/CNNet object
-                The prior
+        prior : NNet/CNNet object
+            The prior
 
-            gamma_t : in [0,1]
-                The offset parameter for recursive PB        
+        gamma_t : in [0,1]
+            The offset parameter for recursive PB
         """
         outputs = torch.zeros(target.size(0), self.classes).to(self.device)
         kl = net.compute_kl()
@@ -253,7 +274,9 @@ class PBBobj:
             net, input, target, clamping, prior, gamma_t
         )
         if self.use_excess_loss:
-            train_obj = self.bound(loss_excess, kl, self.n_posterior, lambda_var, gamma_t)
+            train_obj = self.bound(
+                loss_excess, kl, self.n_posterior, lambda_var, gamma_t
+            )
         else:
             train_obj = self.bound(loss_ce, kl, self.n_posterior, lambda_var, gamma_t)
         return train_obj, kl / self.n_posterior, outputs, loss_ce, loss_01

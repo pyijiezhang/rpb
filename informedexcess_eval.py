@@ -80,7 +80,7 @@ def main(
         test_loss += mcsampling_01(posterior, input, target) * input.shape[0]
     test_loss /= n_test
 
-    kl = posterior.compute_kl().detach().numpy()
+    kl = posterior.compute_kl().detach().cpu().numpy()
 
     results = {
         "kl": kl,

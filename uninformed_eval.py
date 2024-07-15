@@ -57,7 +57,7 @@ def main(
     mc_samples = n_train
     n_bound = n_train
     inv_1 = solve_kl_sup(eval_loss, np.log(1 / delta_test) / mc_samples)
-    kl = posterior.compute_kl().detach().numpy()
+    kl = posterior.compute_kl().detach().cpu().numpy()
     risk = solve_kl_sup(
         inv_1,
         (kl + np.log((2 * np.sqrt(n_bound)) / delta)) / n_bound,
