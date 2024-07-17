@@ -1,7 +1,7 @@
 #
 # Runs optimization procedure for PAC-Bayes with informed prior.
 #
-# Usage: python rpb_train.py  --<argument1>=[option1] --<argument2>=[option2]
+# Usage: python informed_train.py  --<argument1>=[option1] --<argument2>=[option2]
 #        name_data   : 'mnist', 'fmnist'
 #        model       : 'fcn', 'cnn'
 #                      'fcn'        = fully connected network
