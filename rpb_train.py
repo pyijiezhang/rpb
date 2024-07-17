@@ -8,7 +8,6 @@
 #                                     used for "name_data" = 'mnist'
 #                      'cnn'        = convolution neural network
 #                                     used for "name_data" = 'fmnist
-#        layer       : 4 (default), add more later
 #        objective   : 'fclassic' (default), 'fquad', 'flamb', 'bbb'
 #                      'fclassic'   = McAllester's bound
 #                      'fquad'      = PAC-Bayes-quadratic bound by Rivasplata et al., 2019
@@ -25,6 +24,16 @@
 # Return: posteriors saved under saved_models/rpb
 #
 
+"""
+# key idea - decompose the Gibbs loss
+E_rho[L(h)] = E_rho[L(h) - \gamma E_pi[L(h')]] + \gamma E_pi[L(h')].
+Then bound the former by PAC-Bayes-split-kl bound while bound the latter by PAC-Bayes-kl bound.
+
+See the related paper:
+1.  Split-kl and PAC-Bayes-split-kl inequalities for ternary random variables by Yi-Shan Wu and Yevgeny Seldin (NeurIPS 2022)
+2.  Recursive PAC-Bayes: A Frequentist Approach to Sequential Prior Updates with No Information Loss by Yi-Shan Wu, Yijie Zhang, Badr-Eddine Chérief-Abdellatif, and Yevgeny Seldin (2024)
+"""
+
 import os
 import numpy as np
 import torch
@@ -39,7 +48,7 @@ from rpb.utils import init_posterior
 def main(
     name_data="mnist",
     model="fcn",
-    layers=4,
+    layers=4, # take away later
     objective="fclassic",
     T=6,
     split="geometric",
