@@ -1,3 +1,39 @@
+#
+# Evaluate the posterior by recursive PAC-Bayes.
+#
+# Usage: python rpb_train.py  --<argument1>=[option1] --<argument2>=[option2]
+#        name_data   : 'mnist', 'fmnist'
+#        model       : 'fcn', 'cnn'
+#                      'fcn'        = fully connected network
+#                                     used for "name_data" = 'mnist'
+#                      'cnn'        = convolution neural network
+#                                     used for "name_data" = 'fmnist
+#        objective   : 'fclassic' (default), 'fquad', 'flamb', 'bbb'
+#                      'fclassic'   = McAllester's bound
+#                      'fquad'      = PAC-Bayes-quadratic bound by Rivasplata et al., 2019
+#                      'flamb'      = PAC-Bayes-lambda by Thiemann et al., 2017
+#                      'bbb'        = a PAC-Bayes inspired optimization objective (see Rivasplata et al., 2019)
+#        T           : integer              : in general
+#                    : 2, 4, 6 (default), 8 : when "split"='geometric'
+#        split       : 'uniform', 'geometric' (default)
+#        gamma_t     : real value in (0, 1)
+#        recursive_step_1     : bool
+#                               true              = recursion from t=1
+#                               false (default)   = recursion from t=2
+#
+# Return: results saved under results/rpb
+#
+
+"""
+# key idea - decompose the Gibbs loss
+E_rho[L(h)] = E_rho[L(h) - \gamma E_pi[L(h')]] + \gamma E_pi[L(h')].
+Then bound the former by PAC-Bayes-split-kl bound while bound the latter by PAC-Bayes-kl bound.
+
+See the related paper:
+1.  Split-kl and PAC-Bayes-split-kl inequalities for ternary random variables by Yi-Shan Wu and Yevgeny Seldin (NeurIPS 2022)
+2.  Recursive PAC-Bayes: A Frequentist Approach to Sequential Prior Updates with No Information Loss by Yi-Shan Wu, Yijie Zhang, Badr-Eddine Chérief-Abdellatif, and Yevgeny Seldin (2024)
+"""
+
 import os
 import pickle
 import torch
@@ -76,24 +112,33 @@ def main(
 
     # compute risk
     if risk_laststep:
+        # evaluate the posterior pi_T using the informed prior from the previous step pi_{T-1}
         E_ts = [0.0]
         loss_ts, kl_ts, B_ts = compute_risk_rpb_laststep(
             posteriors[-1], eval_loaders[-1]
         )
     elif recursive_step_1:
+        # evaluate the posterior recursively
+        ## evaluate pi_0 using B_0
+        ## evaluate pi_t using E_t + gamma B_{t-1} for t>=1
         loss_ts, kl_ts, E_ts, B_ts = compute_risk_rpb_recursive_step_1(
             posteriors, eval_loaders
         )
     else:
-        loss_ts, kl_ts, E_ts, B_ts = compute_risk_rpb(posteriors, eval_loaders)
+        # evaluate the posterior recursively
+        ## evaluate pi_1 using B_1
+        ## evaluate pi_t using E_t + gamma B_{t-1} for t>=2
+        loss_ts, kl_ts, E_ts, B_ts = compute_risk_rpb(
+            posteriors, eval_loaders
+        )
 
     # compute train and test loss
     train_loader = data.loadbatches_eval(
         train, loader_kargs, batch_size, [n_train], seed
     )[0]
-    test_loader = data.loadbatches_eval(test, loader_kargs, batch_size, [n_test], seed)[
-        0
-    ]
+    test_loader = data.loadbatches_eval(
+        test, loader_kargs, batch_size, [n_test], seed
+    )[0]
 
     test_loss_ts = []
     for t in range(1, T + 1):
