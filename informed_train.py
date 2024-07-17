@@ -1,3 +1,40 @@
+#
+# Runs optimization procedure for PAC-Bayes with informed prior.
+#
+# Usage: python rpb_train.py  --<argument1>=[option1] --<argument2>=[option2]
+#        name_data   : 'mnist', 'fmnist'
+#        model       : 'fcn', 'cnn'
+#                      'fcn'        = fully connected network
+#                                     used for "name_data" = 'mnist'
+#                      'cnn'        = convolution neural network
+#                                     used for "name_data" = 'fmnist
+#        objective   : 'fclassic' (default), 'fquad', 'flamb', 'bbb'
+#                      'fclassic'   = McAllester's bound
+#                      'fquad'      = PAC-Bayes-quadratic bound by Rivasplata et al., 2019
+#                      'flamb'      = PAC-Bayes-lambda by Thiemann et al., 2017
+#                      'bbb'        = a PAC-Bayes inspired optimization objective (see Rivasplata et al., 2019)
+#
+# Return: posteriors saved under saved_models/informed
+#
+
+"""
+This is initiated by Ambroladze et al. (2007) and later improved by Pérez-Ortiz et al. (2021).
+
+# key idea - We demonstrate with the classic McAllester's bound:
+E_rho[L(h)] \le E_rho[\hat L(h,_)] + \sqrt{ KL(rho || pi_S1)/2|_| }
+
+-   Both take a part of the dataset S1 to learn the informed prior \pi_S1.
+-   Both take the rest of the dataset S2=S\S1 to evaluate the posterior rho, i.e., place S2 in _.
+-   The only difference comes when learning the posterior rho:
+        During training, as rho can depend on entire S, it is valid to put S into _ to learn rho.
+        Pérez-Ortiz et al. (2021) did that, while Ambroladze et al. (2007) only put S2 into _ to learn rho.
+
+See the related paper:
+1.  Tighter PAC-Bayes bounds by Amiran Ambroladze, Emilio Parrado-Hernández, and John Shawe-Taylor (NeurIPS 2007)
+2.  Tighter risk certificates for neural networks by María Pérez-Ortiz, Omar Rivasplata, John Shawe-Taylor, and Csaba Szepesvári (JMLR 2021)
+3.  Recursive PAC-Bayes: A Frequentist Approach to Sequential Prior Updates with No Information Loss by Yi-Shan Wu, Yijie Zhang, Badr-Eddine Chérief-Abdellatif, and Yevgeny Seldin (2024)
+"""
+
 import os
 import numpy as np
 import torch
@@ -42,19 +79,22 @@ def main(
         {"num_workers": 1, "pin_memory": True} if torch.cuda.is_available() else {}
     )
 
+    # load data
     train, _ = data.loaddataset(name_data)
     classes = len(train.classes)
     n_train = len(train.data)
     n_prior = int(n_train / 2)
     n_posterior = n_train - n_prior
-    train_loader_prior, train_loader_posterior = data.loadbatches_train(
+    train_loader = data.loadbatches_train(
         train,
         loader_kargs,
         batch_size,
         [n_prior, n_posterior],
         seed,
     )
+    train_loader_prior, train_loader_posterior = train_loader[0], train_loader[1]
 
+    # train the informed prior
     prior = init_posterior(model, sigma_prior, prior=None, device=device)
 
     pbobj = PBBobj(
@@ -95,6 +135,7 @@ def main(
     dir_prior = f"./saved_models/informed/posterior_1_" + exp_settings
     torch.save(prior, dir_prior)
 
+    # train the posterior
     posterior = init_posterior(model, sigma_prior, prior=prior, device=device)
 
     pbobj = PBBobj(
