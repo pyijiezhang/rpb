@@ -125,7 +125,7 @@ def main(
 
     results = {
         "kl": kl,
-        "risk": risk,
+        "risk": risk, # risk, risk_h, loss_excess, loss_01
         "train_loss": train_loss,
         "eval_loss": eval_loss,
         "test_loss": test_loss,
