@@ -1,7 +1,7 @@
 #
 # Evaluate the posterior by PAC-Bayes with uninformed prior.
 #
-# Usage: python rpb_train.py  --<argument1>=[option1] --<argument2>=[option2]
+# Usage: python uninformed_eval.py  --<argument1>=[option1] --<argument2>=[option2]
 #        name_data   : 'mnist', 'fmnist'
 #        model       : 'fcn', 'cnn'
 #                      'fcn'        = fully connected network
@@ -14,7 +14,7 @@
 #                      'flamb'      = PAC-Bayes-lambda by Thiemann et al., 2017
 #                      'bbb'        = a PAC-Bayes inspired optimization objective (see Rivasplata et al., 2019)
 #
-# Return: posteriors saved under saved_models/uninformed
+# Return: results saved under results/uninformed
 #
 
 """ Using PAC-Bayes method with uninformed prior.
