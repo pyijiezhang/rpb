@@ -90,11 +90,11 @@ def main(
 
     # eval loss
     eval_loss = 0
-    n_eval = n_posterior
+    n_bound = n_posterior
     for _, (input, target) in enumerate(tqdm(eval_loader)):
         input, target = input.to(device), target.to(device)
         eval_loss += mcsampling_01(posterior, input, target) * input.shape[0]
-    eval_loss /= n_eval
+    eval_loss /= n_bound
 
     # risk
     mc_samples = n_posterior
@@ -102,7 +102,7 @@ def main(
     kl = posterior.compute_kl().detach().cpu().numpy()
     risk = solve_kl_sup(
         inv_1,
-        (kl + np.log((2 * np.sqrt(n_eval)) / delta)) / n_eval,
+        (kl + np.log((2 * np.sqrt(n_bound)) / delta)) / n_bound,
     )
 
     # train loss
