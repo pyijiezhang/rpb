@@ -427,7 +427,7 @@ def compute_risk_informedexcess(
     js = rv[1:]
     js_minus = rv[1:] - rv[0:-1]
 
-    risk = 0
+    risk = rv[0]
     for i in range(len(loss_excess)):
         inv_1 = solve_kl_sup(
             loss_excess[i],
@@ -439,7 +439,6 @@ def compute_risk_informedexcess(
         )
         risk += inv_2 * js_minus[i]
 
-    risk += rv[0]
     risk_h = compute_risk_h(loss_01, n_bound, delta)
     risk += risk_h
 
