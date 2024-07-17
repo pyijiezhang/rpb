@@ -79,9 +79,8 @@ def main(
     train_loader = data.loadbatches_eval(
         train, loader_kargs, batch_size, [n_train], seed
     )[0]
-    test_loader = data.loadbatches_eval(test, loader_kargs, batch_size, [n_test], seed)[
-        0
-    ]
+    test_loader = data.loadbatches_eval(test, loader_kargs, batch_size, [n_test], seed
+    )[0]
 
     # load model
     exp_settings = f"{name_data}_{model}_{objective}_{seed}.pt"
