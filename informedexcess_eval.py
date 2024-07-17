@@ -1,3 +1,45 @@
+#
+# Evaluate the posterior by PAC-Bayes with informed prior + excess loss.
+#
+# Usage: python informedexcess_eval.py  --<argument1>=[option1] --<argument2>=[option2]
+#        name_data   : 'mnist', 'fmnist'
+#        model       : 'fcn', 'cnn'
+#                      'fcn'        = fully connected network
+#                                     used for "name_data" = 'mnist'
+#                      'cnn'        = convolution neural network
+#                                     used for "name_data" = 'fmnist
+#        objective   : 'fclassic' (default), 'fquad', 'flamb', 'bbb'
+#                      'fclassic'   = McAllester's bound
+#                      'fquad'      = PAC-Bayes-quadratic bound by Rivasplata et al., 2019
+#                      'flamb'      = PAC-Bayes-lambda by Thiemann et al., 2017
+#                      'bbb'        = a PAC-Bayes inspired optimization objective (see Rivasplata et al., 2019)
+#
+# Return: results saved under results/informedexcess
+#
+
+""" Using PAC-Bayes method with informed prior and excess loss
+
+This is a method used by e.g. Mhammedi et al. (2019) and Wu and Seldin (2022).
+
+General Info:
+# key idea
+The underlying idea can be summarized by the decomposition:
+E_rho[L(h)] = E_rho[L(h) - L(h^*)] + L(h^*)
+
+1.  (Informed prior: \pi_S1)
+    The informed prior \pi_S1 is learned with PAC-Bayes method from S1.
+2.  (Excess loss: E_rho[L(h) - L(h^*)])
+    -   The reference prediction rule h^* is an ERU from S1.
+    -   Bound the excess loss by PAC-Bayes-split-kl inequality (Wu and Seldin (2022)).
+3.  (Reference loss: L(h^*))
+    Bound the loss by test set bound by Langford (2005).
+
+See the related paper:
+1.  PAC-Bayes un-expected Bernstein inequality by Zakaria Mhammedi, Peter Grünwald, and Benjamin Guedj (NeurIPS 2019)
+2.  Split-kl and PAC-Bayes-split-kl inequalities for ternary random variables by Yi-Shan Wu and Yevgeny Seldin (NeurIPS 2022)
+3.  Tutorial on practical prediction theory for classification by John Langford (JMLR 2005)
+"""
+
 import os
 import pickle
 import torch
@@ -42,9 +84,8 @@ def main(
     train_loader = data.loadbatches_eval(
         train, loader_kargs, batch_size, [n_train], seed
     )[0]
-    test_loader = data.loadbatches_eval(test, loader_kargs, batch_size, [n_test], seed)[
-        0
-    ]
+    test_loader = data.loadbatches_eval(test, loader_kargs, batch_size, [n_test], seed
+    )[0]
 
     # load model
     exp_settings = f"{name_data}_{model}_{objective}_{seed}.pt"
@@ -57,7 +98,7 @@ def main(
 
     # eval loss
     eval_loss = 0
-    n_eval = 30000
+    n_eval = n_posterior
     for _, (input, target) in enumerate(tqdm(eval_loader)):
         input, target = input.to(device), target.to(device)
         eval_loss += mcsampling_01(posterior, input, target) * input.shape[0]
