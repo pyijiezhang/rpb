@@ -66,8 +66,8 @@ class PBBobj:
         n_posterior=30000,
         use_excess_loss=False,
         sample_prior=True,
-        c1=3,
-        c2=3,
+        c1=5,
+        c2=5,
     ):
         super().__init__()
         self.objective = objective
