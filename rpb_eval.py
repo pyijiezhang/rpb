@@ -83,7 +83,7 @@ def main(
         T_splits.append(n_train - int(n_train / T) * (T - 1))
     elif split == "geometric":
         if T == 2:
-            T_splits = [20000, 40000]
+            T_splits = [30000, 30000]
         elif T == 4:
             T_splits = [7500, 7500, 15000, 30000]
         elif T == 6:
