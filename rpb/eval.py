@@ -8,11 +8,11 @@ import torch.nn.functional as F
 
 
 def get_loss_01(pi, input, target, sample=True):
-    """Compute 0-1 loss of h~pi(h) for each data.
+    """Compute 0-1 loss of h~pi(h) for a data.
     Inputs:
         pi      - can be prior or posterior
-        input   - data X
-        target  - data Y
+        input   - data x
+        target  - data x
     Outputs: a vector with size = len(X)
     """
     outputs = pi(input, sample=sample)
@@ -23,7 +23,7 @@ def get_loss_01(pi, input, target, sample=True):
 
 
 def get_excess_j(loss_01_posterior, loss_01_prior, js, gamma_t):
-    """Compute excess loss delta_j^{\hat}(h_2, h_1, x, y) for each j.
+    """Compute excess loss delta_j^{\hat}(h_2, h_1, x, y) for a data and each j.
     Inputs:
         loss_01_posterior    - the 0-1 loss of posteriors on (x,y)
         loss_01_prior        - the 0-1 loss of priors on (x,y)
@@ -33,8 +33,8 @@ def get_excess_j(loss_01_posterior, loss_01_prior, js, gamma_t):
     """
     delta_js = []
     for j in js:
-        # compute the indicator function and then average
-        delta_j = ((loss_01_posterior - gamma_t * loss_01_prior) >= j).float().mean()
+        # compute the indicator function
+        delta_j = ((loss_01_posterior - gamma_t * loss_01_prior) >= j - 1e-7).float()
         delta_js.append(delta_j)
     return torch.tensor(delta_js)
 
@@ -47,12 +47,11 @@ def mcsampling_01(pi, input, target, sample=True):
         target  - data Y
     Outputs: the empirical 0-1 loss (\in[0,1])
     """
-    mc_samples = input.shape[0]  # get 1 mc sample for 1 data
     loss_01 = 0
-    for i in trange(mc_samples):
+    for i in trange(input.shape[0]):
         loss_01_i = get_loss_01(pi, input[i : i + 1], target[i : i + 1], sample=sample)
         loss_01 += loss_01_i
-    return loss_01.cpu().numpy()[0] / mc_samples
+    return loss_01.cpu().numpy()[0] / input.shape[0]
 
 
 def mcsampling_excess(posterior, prior, input, target, sample_prior=True, gamma_t=0.5):
@@ -76,8 +75,10 @@ def mcsampling_excess(posterior, prior, input, target, sample_prior=True, gamma_
     js = rv[1:]
     delta_js = torch.zeros(len(js))
 
-    mc_samples = input.shape[0]  # get 1 mc sample for 1 data
-    for i in trange(mc_samples):
+    loss_prior = 0
+    loss_posterior = 0
+
+    for i in trange(input.shape[0]):
         loss_01_prior = get_loss_01(
             prior,
             input[i : i + 1],
@@ -88,8 +89,11 @@ def mcsampling_excess(posterior, prior, input, target, sample_prior=True, gamma_
             posterior, input[i : i + 1], target[i : i + 1], sample=True
         )
         delta_js_mc = get_excess_j(loss_01_posterior, loss_01_prior, js, gamma_t)
+        loss_prior += loss_01_prior
+        loss_posterior += loss_01_posterior
         delta_js += delta_js_mc
-    return delta_js.cpu().numpy() / mc_samples
+
+    return delta_js.cpu().numpy() / input.shape[0], loss_prior.cpu().numpy() / input.shape[0], loss_posterior.cpu().numpy() / input.shape[0]
 
 
 def compute_risk_rpb(
@@ -144,10 +148,10 @@ def compute_risk_rpb(
             loss_excess = 0
             for _, (input, target) in enumerate(tqdm(eval_loader)):
                 input, target = input.to(device), target.to(device)
-                loss_excess += (
-                    mcsampling_excess(posterior, prior, input, target, gamma_t=gamma_t)
-                    * input.shape[0]
+                emp_losses = mcsampling_excess(
+                    posterior, prior, input, target, gamma_t=gamma_t
                 )
+                loss_excess += emp_losses[0] * input.shape[0]
             loss_excess /= n_bound
 
             E_t = compute_E_t(loss_excess, kl, T, gamma_t, n_bound, delta_test, delta)
@@ -208,13 +212,15 @@ def compute_risk_rpb_recursive_step_1(
 
         # compute (E_t)_{t >= 1}
         loss_excess = 0
+
         for _, (input, target) in enumerate(tqdm(eval_loader)):
             input, target = input.to(device), target.to(device)
-            loss_excess += (
-                mcsampling_excess(posterior, prior, input, target, gamma_t=gamma_t)
-                * input.shape[0]
+            emp_losses = mcsampling_excess(
+                posterior, prior, input, target, gamma_t=gamma_t
             )
+            loss_excess += emp_losses[0] * input.shape[0]
         loss_excess /= n_bound
+
         loss_ts.append(loss_excess)
         E_t = compute_E_t(loss_excess, kl, T + 1, gamma_t, n_bound, delta_test, delta)
         E_ts.append(E_t)
@@ -307,16 +313,26 @@ def compute_risk_rpb_onestep(
     js_minus = rv[1:] - rv[0:-1]
 
     loss_excess = 0
+    loss_prior = 0
+    loss_posterior = 0
     for _, (input, target) in enumerate(tqdm(eval_loader)):
         input, target = input.to(device), target.to(device)
-        loss_excess += (
-            mcsampling_excess(posterior, prior, input, target, gamma_t=gamma_t)
-            * input.shape[0]
+        emp_losses = mcsampling_excess(
+            posterior, prior, input, target, gamma_t=gamma_t
         )
+        loss_excess += emp_losses[0] * input.shape[0]
+        loss_prior += emp_losses[1] * input.shape[0]
+        loss_posterior += emp_losses[2] * input.shape[0]
+
     loss_excess /= n_bound
+    loss_prior /= n_bound
+    loss_posterior /= n_bound
+
     loss_excess_sum = (loss_excess * js_minus).sum(0) + rv[0]
+    print("posterior: ", loss_posterior, " prior: ", loss_prior, " excessloss: ", loss_posterior - gamma_t * loss_prior)
+    print("loss_excess_sum: ", loss_excess_sum)
     E_t = compute_E_t(loss_excess, kl, T, gamma_t, n_bound, delta_test, delta)
-    return loss_excess, loss_excess_sum, E_t, kl
+    return loss_excess, loss_excess_sum, E_t, kl, loss_prior, loss_posterior
 
 
 def compute_B_t(B_1, E_ts, gamma_t):
