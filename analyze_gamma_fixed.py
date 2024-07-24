@@ -17,16 +17,16 @@ def main(
     objective="fclassic",
     T=6,
     split="geometric",
-    gamma_t=0.5,
+    gamma_t_model=0.5,
     recursive_step_1=False,
-    gamma_ts=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+    gamma_ts=[0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
     delta=0.025,
     delta_test=0.01,
     batch_size=250,
     seed=0,
 ):
 
-    exp_settings = f"{name_data}_{model}_{objective}_{split}_{T}_{recursive_step_1}_{gamma_t}_{seed}.pt"
+    exp_settings = f"{name_data}_{model}_{objective}_{split}_{T}_{recursive_step_1}_{gamma_t_model}_{seed}.pt"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -46,7 +46,7 @@ def main(
         T_splits = [int(n_train / T)] * T
     elif split == "geometric":
         if T == 2:
-            T_splits = [20000, 40000]
+            T_splits = [30000, 30000]
         elif T == 4:
             T_splits = [7500, 7500, 15000, 30000]
         elif T == 6:
@@ -82,14 +82,17 @@ def main(
 
             print("Current gamma_t:", gamma_t)
 
-            loss_excess, loss_excess_sum, E_t, kl = compute_risk_rpb_onestep(
+            loss_excess, loss_excess_sum, E_t, kl, loss_prior, loss_posterior = compute_risk_rpb_onestep(
                 posterior, prior, eval_loader, gamma_t, T, delta_test, delta
             )
             results = {
                 "loss_excess": loss_excess,
                 "loss_excess_sum": loss_excess_sum,
+                "posterior-gam_prior": loss_posterior - gamma_t * loss_prior,
                 "E_t": E_t,
                 "kl": kl,
+                "loss_prior": loss_prior,
+                "loss_posterior": loss_posterior,
             }
             print("Current results: ", results)
             results_gamma[t][gamma_t] = results
