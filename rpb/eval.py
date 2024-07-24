@@ -329,9 +329,13 @@ def compute_risk_rpb_onestep(
     loss_posterior /= n_bound
 
     loss_excess_sum = (loss_excess * js_minus).sum(0) + rv[0]
-    print("posterior: ", loss_posterior, " prior: ", loss_prior, " excessloss: ", loss_posterior - gamma_t * loss_prior)
-    print("loss_excess_sum: ", loss_excess_sum)
+
     E_t = compute_E_t(loss_excess, kl, T, gamma_t, n_bound, delta_test, delta)
+
+    # print some stats
+    print("n_bound: ", n_bound, "gamma_t: ", gamma_t)
+    print("posterior - gam * prior: ", loss_posterior - gamma_t * loss_prior, "; loss_excess_sum: ", loss_excess_sum)
+    print("E_t", E_t)
     return loss_excess, loss_excess_sum, E_t, kl, loss_prior, loss_posterior
 
 
