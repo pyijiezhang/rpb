@@ -1,5 +1,6 @@
 fmnist-data/
 mnist-data/
+analyze_gamma/
 *pyc
 .DS_Store
 *out
