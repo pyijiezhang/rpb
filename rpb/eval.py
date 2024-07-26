@@ -433,12 +433,10 @@ def compute_risk_informedexcess(
     loss_01 = 0
     for _, (input, target) in enumerate(tqdm(eval_loader)):
         input, target = input.to(device), target.to(device)
-        loss_excess += (
-            mcsampling_excess(
-                posterior, h_pnet, input, target, sample_prior=False, gamma_t=1.0
-            )
-            * input.shape[0]
+        emp_losses = mcsampling_excess(
+            posterior, h_pnet, input, target, gamma_t=1.0
         )
+        loss_excess += emp_losses[0] * input.shape[0]
         loss_01 += mcsampling_01(h_pnet, input, target, sample=False) * input.shape[0]
     loss_excess /= n_bound
     loss_01 /= n_bound
