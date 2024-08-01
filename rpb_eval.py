@@ -182,6 +182,7 @@ def main(
     with open(results_dir, "wb") as handle:
         pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+    print("Evaluation time:", eval_time)
 
 if __name__ == "__main__":
     import fire

@@ -97,7 +97,7 @@ def main(
         inv_1,
         (kl + np.log((2 * np.sqrt(n_bound)) / delta)) / n_bound,
     )
-    end = start = time.time()
+    end = time.time()
     eval_time = end - start
 
     # test loss
@@ -122,6 +122,8 @@ def main(
 
     with open(results_dir, "wb") as handle:
         pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    print("Evaluation time:", eval_time)
 
 
 if __name__ == "__main__":
