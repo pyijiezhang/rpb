@@ -39,7 +39,7 @@ import pickle
 import torch
 import numpy as np
 from tqdm import tqdm
-
+import time
 from rpb import data
 from rpb.eval import (
     compute_risk_rpb,
@@ -109,6 +109,7 @@ def main(
         posterior = torch.load(dir_posterior, map_location=torch.device(device))
         posteriors.append(posterior)
 
+    start = time.time()
     # compute risk
     if risk_laststep:
         # evaluate the posterior pi_T using the informed prior from the previous step pi_{T-1}
@@ -130,6 +131,9 @@ def main(
         loss_ts, kl_ts, E_ts, B_ts = compute_risk_rpb(
             posteriors, eval_loaders
         )
+
+    end = time.time()
+    eval_time = end - start
 
     # compute train and test loss
     train_loader = data.loadbatches_eval(
@@ -166,6 +170,7 @@ def main(
         "risk": B_ts,
         "train_loss": train_loss_T,
         "test_loss": test_loss_ts,
+        "eval_time": eval_time,
     }
 
     if not os.path.exists("./results/rpb"):

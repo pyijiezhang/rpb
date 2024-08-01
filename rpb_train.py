@@ -39,6 +39,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 from tqdm import trange
+import time
 from rpb.models import Lambda_var, trainPNNet
 from rpb.bounds import PBBobj
 from rpb import data
@@ -109,6 +110,7 @@ def main(
         [len(train_loader.sampler.indices) for train_loader in train_loaders]
     )
 
+    start = time.time()
     for t in range(1, T + 1): # following the index in the paper
 
         train_loader = train_loaders[t - 1]
@@ -164,7 +166,7 @@ def main(
             posterior.parameters(), lr=learning_rate, momentum=momentum
         )
 
-        # train the posterior for - train_epochs - epochs
+        # train the posterior for "train_epochs" epochs
         for epoch in trange(train_epochs):
             trainPNNet(
                 posterior,
@@ -181,6 +183,9 @@ def main(
 
         dir_posterior = f"./saved_models/rpb/posterior_{t}_" + exp_settings
         torch.save(posterior, dir_posterior)
+
+    end = time.time()
+    print("Train time: ", end - start)
 
 
 if __name__ == "__main__":

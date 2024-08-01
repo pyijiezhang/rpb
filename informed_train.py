@@ -40,6 +40,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 from tqdm import trange
+import time
 from rpb.models import Lambda_var, trainPNNet
 from rpb.bounds import PBBobj
 from rpb import data
@@ -92,6 +93,9 @@ def main(
         [n_prior, n_posterior],
         seed,
     )
+
+    start = time.time()
+
     train_loader_prior, train_loader_posterior = train_loader[0], train_loader[1]
 
     # train the informed prior
@@ -175,6 +179,9 @@ def main(
 
     dir_posterior = f"./saved_models/informed/posterior_2_" + exp_settings
     torch.save(posterior, dir_posterior)
+
+    end = time.time()
+    print("Train time: ", end - start)
 
 
 if __name__ == "__main__":

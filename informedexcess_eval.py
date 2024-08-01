@@ -45,7 +45,7 @@ import pickle
 import torch
 import numpy as np
 from tqdm import tqdm
-
+import time
 from rpb import data
 from rpb.eval import compute_risk_informedexcess, mcsampling_01
 
@@ -97,6 +97,7 @@ def main(
     h = torch.load(dir_h, map_location=torch.device(device))
 
     # eval loss
+    start = time.time()
     eval_loss = 0
     n_eval = n_posterior
     for _, (input, target) in enumerate(tqdm(eval_loader)):
@@ -106,6 +107,9 @@ def main(
 
     # risk
     risk = compute_risk_informedexcess(posterior, h, eval_loader, delta_test, delta)
+
+    end = time.time()
+    eval_time = end - start
 
     # train loss
     train_loss = 0
@@ -129,6 +133,7 @@ def main(
         "train_loss": train_loss,
         "eval_loss": eval_loss,
         "test_loss": test_loss,
+        "eval_time": eval_time,
     }
 
     if not os.path.exists("./results/informedexcess"):

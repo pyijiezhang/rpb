@@ -37,7 +37,7 @@ import pickle
 import torch
 import numpy as np
 from tqdm import tqdm
-
+import time
 from rpb import data
 from rpb.eval import mcsampling_01, solve_kl_sup
 
@@ -87,6 +87,7 @@ def main(
     train_loss /= n_train
 
     # risk
+    start = time.time()
     eval_loss = train_loss
     mc_samples = n_train
     n_bound = n_train
@@ -96,6 +97,8 @@ def main(
         inv_1,
         (kl + np.log((2 * np.sqrt(n_bound)) / delta)) / n_bound,
     )
+    end = start = time.time()
+    eval_time = end - start
 
     # test loss
     test_loss = 0
@@ -110,6 +113,7 @@ def main(
         "train_loss": train_loss,
         "eval_loss": eval_loss,
         "test_loss": test_loss,
+        "eval_time": eval_time,
     }
 
     if not os.path.exists("./results/uninformed"):

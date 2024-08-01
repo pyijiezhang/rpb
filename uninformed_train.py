@@ -37,6 +37,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 from tqdm import trange
+import time
 from rpb.models import Lambda_var, trainPNNet
 from rpb.bounds import PBBobj
 from rpb import data
@@ -85,6 +86,8 @@ def main(
     )[0]
     n_posterior = n_train
 
+    start = time.time()
+
     # train the posterior
     posterior = init_posterior(model, sigma_prior, prior=None, device=device)
 
@@ -111,6 +114,8 @@ def main(
 
     optimizer = optim.SGD(posterior.parameters(), lr=learning_rate, momentum=momentum)
 
+    # train the posterior for "train_epochs" epochs
+    start = time.time()
     for epoch in trange(train_epochs):
         trainPNNet(
             posterior,
@@ -126,6 +131,8 @@ def main(
     dir_posterior = f"./saved_models/uninformed/posterior_" + exp_settings
     torch.save(posterior, dir_posterior)
 
+    end = time.time()
+    print("Train time: ", end - start)
 
 if __name__ == "__main__":
     import fire
