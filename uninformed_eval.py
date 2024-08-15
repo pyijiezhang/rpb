@@ -79,6 +79,7 @@ def main(
     dir_posterior = f"./saved_models/uninformed/posterior_" + exp_settings
     posterior = torch.load(dir_posterior, map_location=torch.device(device))
 
+    start = time.time()
     # train loss
     train_loss = 0
     for _, (input, target) in enumerate(tqdm(train_loader)):
@@ -87,7 +88,6 @@ def main(
     train_loss /= n_train
 
     # risk
-    start = time.time()
     eval_loss = train_loss
     mc_samples = n_train
     n_bound = n_train
