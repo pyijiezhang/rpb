@@ -9,7 +9,7 @@ from rpb.models import Lambda_var, trainPNNet
 from rpb.bounds import PBBobj
 from rpb import data
 from rpb.utils import init_posterior
-from rpb.eval import compute_risk_rpb_onestep
+from rpb.eval import compute_risk_rpb_onestep, compute_risk_rpb_laststep
 
 
 def main(
@@ -17,6 +17,7 @@ def main(
     model="fcn",
     objective="fclassic",
     T=6,
+    examine_step=2, # which t to plot
     split="geometric",
     gamma_t_model=0.5,
     recursive_step_1=False,
@@ -27,8 +28,8 @@ def main(
     delta_test=0.01,
     kl_penalty=1,
     initial_lamb=1.0,
-    train_epochs=50,
-    learning_rate=0.005,
+    train_epochs=200,#50,
+    learning_rate=0.001,#0.005,
     momentum=0.95,
     batch_size=250,
     verbose=True,
@@ -78,7 +79,7 @@ def main(
         start_step = 2
 
     results_gamma = {}
-    for t in range(start_step, T + 1):
+    for t in [examine_step]:#range(start_step, T + 1):
 
         print("Current step:", t)
 
@@ -150,14 +151,19 @@ def main(
             )
             torch.save(posterior, dir_posterior)
 
-            # evaluate the posterior
+            # evaluate the excess posterior
             loss_excess, loss_excess_sum, E_t, kl, loss_prior, loss_posterior = compute_risk_rpb_onestep(
                 posterior, prior, eval_loader, gamma_t, T, delta_test, delta
             )
+            _, _, laststep_B_t = compute_risk_rpb_laststep(
+                posterior, eval_loader, loss_posterior
+            )
+            # 
             results = {
                 "loss_excess": loss_excess,
                 "loss_excess_sum": loss_excess_sum,
                 "E_t": E_t,
+                "laststep_B_t": laststep_B_t,
                 "kl": kl,
                 "loss_prior": loss_prior,
                 "loss_posterior": loss_posterior,
@@ -167,7 +173,7 @@ def main(
 
         if not os.path.exists("./results/rpb"):
             os.makedirs("./results/rpb", exist_ok=True)
-        results_dir = f"./results/rpb/results_gamma_" + exp_settings
+        results_dir = f"./results/rpb/results_gamma_{t}_" + exp_settings
 
         with open(results_dir, "wb") as handle:
             pickle.dump(results_gamma, handle, protocol=pickle.HIGHEST_PROTOCOL)

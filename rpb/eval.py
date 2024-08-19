@@ -265,13 +265,14 @@ def compute_risk_rpb_recursive_step_1(
     return loss_ts, kl_ts, E_ts, B_ts
 
 
-def compute_risk_rpb_laststep(posterior, eval_loader, delta_test=0.01, delta=0.025):
-    """Bound \pi_T by \pi_{T-1} without further recursion
-        \pi_{T_1} is only needed for computing kl, which is already recorded by posterior
+def compute_risk_rpb_laststep(posterior, eval_loader, evaloss_post=None, delta_test=0.01, delta=0.025):
+    """Bound \pi_t by \pi_{t-1} without further recursion
+        \pi_{t_1} is only needed for computing kl, which is already recorded by posterior
     Inputs:
-        posterior       - \pi_T
+        posterior       - \pi_t
         delta_test      - for the test set bound of the posteriors
-        eval_loader    - evaluation dataset
+        eval_loader     - evaluation dataset
+        evaloss_post    - evaluation loss of the posterior on eval_loader already computed somewhere else
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -281,11 +282,14 @@ def compute_risk_rpb_laststep(posterior, eval_loader, delta_test=0.01, delta=0.0
 
     kl = posterior.compute_kl().detach().cpu().numpy()
 
-    loss_01 = 0
-    for _, (input, target) in enumerate(tqdm(eval_loader)):
-        input, target = input.to(device), target.to(device)
-        loss_01 += mcsampling_01(posterior, input, target) * input.shape[0]
-    loss_01 /= n_bound
+    if evaloss_post is not None:
+        loss_01 = evaloss_post
+    else:
+        loss_01 = 0
+        for _, (input, target) in enumerate(tqdm(eval_loader)):
+            input, target = input.to(device), target.to(device)
+            loss_01 += mcsampling_01(posterior, input, target) * input.shape[0]
+        loss_01 /= n_bound
 
     inv_1 = solve_kl_sup(loss_01, np.log(1 / delta_test) / n_bound)
     B_T = solve_kl_sup(
@@ -333,9 +337,9 @@ def compute_risk_rpb_onestep(
     E_t = compute_E_t(loss_excess, kl, T, gamma_t, n_bound, delta_test, delta)
 
     # print some stats
-    print("n_bound: ", n_bound, "gamma_t: ", gamma_t)
-    print("posterior - gam * prior: ", loss_posterior - gamma_t * loss_prior, "; loss_excess_sum: ", loss_excess_sum)
-    print("E_t", E_t)
+    #print("n_bound: ", n_bound, "gamma_t: ", gamma_t)
+    #print("posterior - gam * prior: ", loss_posterior - gamma_t * loss_prior, "; loss_excess_sum: ", loss_excess_sum)
+    #print("E_t", E_t)
     return loss_excess, loss_excess_sum, E_t, kl, loss_prior, loss_posterior
 
 
