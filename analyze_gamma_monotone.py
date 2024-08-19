@@ -29,7 +29,7 @@ def main(
     delta_test=0.01,
     kl_penalty=1,
     initial_lamb=1.0,
-    train_epochs=50,#200,
+    train_epochs=200,#50,
     learning_rate=0.001,#0.005,
     momentum=0.95,
     batch_size=250,
